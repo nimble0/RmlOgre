@@ -1,0 +1,17 @@
+compositor_node Start
+{
+	in 0 rt0
+
+	target rt0
+	{
+		pass clear
+		{
+			colour_value 0.4 0.4 0.8 0.4
+		}
+	}
+}
+
+workspace UiWorkspace
+{
+	connect_external 0 Start 0
+}

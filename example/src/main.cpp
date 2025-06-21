@@ -4,6 +4,7 @@
 #include <OgreConfigFile.h>
 #include <OgreItem.h>
 #include <OgreRoot.h>
+#include <OgreTextureGpuManager.h>
 #include <OgreWindow.h>
 
 #include <OgreHlmsManager.h>
@@ -211,12 +212,36 @@ int main( int argc, const char *argv[] )
 		->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 	itemNode->attachObject(item);
 
-	// Setup a basic compositor with a blue clear colour
+
 	CompositorManager2 *compositorManager = root->getCompositorManager2();
-	const String workspaceName("Demo Workspace");
-	const ColourValue backgroundColour(0.2f, 0.4f, 0.6f);
-	compositorManager->createBasicWorkspaceDef(workspaceName, backgroundColour, IdString());
-	compositorManager->addWorkspace(sceneManager, window->getTexture(), camera, workspaceName, true);
+
+
+	Ogre::TextureGpu* uiOutput = Ogre::Root::getSingleton()
+		.getRenderSystem()
+		->getTextureGpuManager()
+		->createOrRetrieveTexture(
+			"UiOutput",
+			Ogre::GpuPageOutStrategy::Discard,
+			Ogre::TextureFlags::RenderToTexture,
+			Ogre::TextureTypes::Type2D);
+	uiOutput->setResolution(window->getWidth(), window->getHeight());
+	uiOutput->setPixelFormat(Ogre::PFG_RGBA16_FLOAT);
+	if(uiOutput->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
+		uiOutput->scheduleTransitionTo( Ogre::GpuResidency::Resident, nullptr );
+	auto* uiWorkspace = compositorManager->addWorkspace(
+		sceneManager,
+		uiOutput,
+		camera,
+		"UiWorkspace",
+		true);
+
+	auto* mainWorkspace = compositorManager->addWorkspace(
+		sceneManager,
+		{ window->getTexture(), uiOutput },
+		camera,
+		"ExampleWorkspace",
+		true);
+
 
 	MyWindowEventListener myWindowEventListener;
 	WindowEventUtilities::addWindowEventListener(window, &myWindowEventListener);

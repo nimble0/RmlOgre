@@ -1,0 +1,67 @@
+//-----------------------------------------------------------------------------
+// GLSL shaders
+fragment_program AlphaBlend_ps_GLSL glsl
+{
+	source AlphaBlend_ps.glsl
+	default_params
+	{
+		param_named dstTex int 0
+		param_named srcTex int 1
+	}
+}
+
+fragment_program AlphaBlend_ps_VK glslvk
+{
+	source AlphaBlend_ps.glsl
+}
+
+// HLSL shaders
+fragment_program AlphaBlend_ps_HLSL hlsl
+{
+	source AlphaBlend_ps.hlsl
+	entry_point main
+	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+}
+
+
+fragment_program AlphaBlend_ps unified
+{
+	delegate AlphaBlend_ps_HLSL
+	delegate AlphaBlend_ps_GLSL
+	delegate AlphaBlend_ps_VK
+}
+
+// Material definition
+material AlphaBlend
+{
+	technique
+	{
+		pass
+		{
+			depth_check off
+			depth_write off
+
+			cull_hardware none
+
+			vertex_program_ref Ogre/Compositor/Quad_vs
+			{
+			}
+
+			fragment_program_ref AlphaBlend_ps
+			{
+			}
+
+			texture_unit dstTex
+			{
+				filtering			none
+				tex_address_mode	clamp
+			}
+
+			texture_unit srcTex
+			{
+				filtering			none
+				tex_address_mode	clamp
+			}
+		}
+	}
+}
