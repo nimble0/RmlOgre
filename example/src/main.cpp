@@ -14,6 +14,9 @@
 
 #include <OgreWindowEventUtilities.h>
 
+#include <RmlUi/Core.h>
+#include <RmlOgre/RenderInterface.hpp>
+
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE
 	#include "OSX/macUtils.h"
 #endif
@@ -188,6 +191,8 @@ int main( int argc, const char *argv[] )
 	setupResources(cf);
 	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups(true);
 
+	Rml::Initialise();
+
 	// Create SceneManager
 	const size_t numThreads = 1u;
 	SceneManager *sceneManager = root->createSceneManager(ST_GENERIC, numThreads, "ExampleSMInstance");
@@ -211,6 +216,14 @@ int main( int argc, const char *argv[] )
 	auto* itemNode = sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)
 		->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 	itemNode->attachObject(item);
+
+
+	nimble::RmlOgre::RenderInterface renderInterface;
+	Rml::Context* context = Rml::CreateContext(
+		"Main",
+		Rml::Vector2i(window->getWidth(), window->getHeight()),
+		&renderInterface
+	);
 
 
 	CompositorManager2 *compositorManager = root->getCompositorManager2();
@@ -257,6 +270,8 @@ int main( int argc, const char *argv[] )
 	}
 
 	WindowEventUtilities::removeWindowEventListener(window, &myWindowEventListener);
+
+	Rml::Shutdown();
 
 	return 0;
 }

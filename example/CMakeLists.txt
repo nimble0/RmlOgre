@@ -30,6 +30,7 @@ target_link_libraries(RmlOgreExample
 	${OGRE_RenderSystem_Vulkan_LIBRARIES}
 
 	RmlUi::RmlUi
+	RmlOgre
 )
 
 set(BIN_CFG_FILES
