@@ -1,17 +1,39 @@
 compositor_node Start
 {
-	in 0 rt0
+	texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto
+	texture rt1 target_width target_height PFG_RGBA16_FLOAT msaa_auto
 
 	target rt0
 	{
 		pass clear
 		{
-			colour_value 0.4 0.4 0.8 0.4
+			colour_value 0 0 0 0
 		}
 	}
+
+	target rt1
+	{
+		pass clear
+		{
+			colour_value 0 0 0 0
+		}
+	}
+
+	out 0 rt0
+	out 1 rt1
 }
 
-workspace UiWorkspace
+compositor_node End
 {
-	connect_external 0 Start 0
+	in 0 rt0
+	in 1 rt1
+
+	target rt1
+	{
+		pass render_quad
+		{
+			material Ogre/Copy/4xFP32
+			input 0 rt0
+		}
+	}
 }

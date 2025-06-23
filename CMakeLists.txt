@@ -29,7 +29,10 @@ target_include_directories(RmlOgre
 
 target_sources(RmlOgre
 	PRIVATE
+		src/RmlOgre/CompositorPassGeometry.cpp
+		src/RmlOgre/Geometry.cpp
 		src/RmlOgre/RenderInterface.cpp
+		src/RmlOgre/RenderObject.cpp
 )
 
 target_link_libraries(RmlOgre

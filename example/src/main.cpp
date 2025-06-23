@@ -11,10 +11,13 @@
 #include <OgreHlmsUnlit.h>
 
 #include <Compositor/OgreCompositorManager2.h>
+#include <Compositor/Pass/OgreCompositorPassProvider.h>
 
 #include <OgreWindowEventUtilities.h>
 
 #include <RmlUi/Core.h>
+#include <RmlOgre/CompositorPassGeometry.hpp>
+#include <RmlOgre/CompositorPassGeometryDef.hpp>
 #include <RmlOgre/RenderInterface.hpp>
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE
@@ -124,12 +127,61 @@ void setupResources(Ogre::ConfigFile& cf)
 	}
 }
 
+struct MyCompositorPassProvider : public Ogre::CompositorPassProvider
+{
+	Ogre::CompositorPassDef* addPassDef(
+		Ogre::CompositorPassType passType,
+		Ogre::IdString customId,
+		Ogre::CompositorTargetDef* parentTargetDef,
+		Ogre::CompositorNodeDef* parentNodeDef
+	) override
+	{
+		if(customId == "rml_geometry")
+			return OGRE_NEW nimble::RmlOgre::CompositorPassGeometryDef(parentTargetDef);
+		else
+			return nullptr;
+	}
+
+	Ogre::CompositorPass* addPass(
+		const Ogre::CompositorPassDef* definition,
+		Ogre::Camera* defaultCamera,
+		Ogre::CompositorNode* parentNode,
+		const Ogre::RenderTargetViewDef* rtvDef,
+		Ogre::SceneManager* sceneManager
+	) override
+	{
+		if(auto* d = dynamic_cast<const nimble::RmlOgre::CompositorPassGeometryDef*>(definition))
+			return OGRE_NEW nimble::RmlOgre::CompositorPassGeometry(
+				d,
+				defaultCamera,
+				rtvDef,
+				parentNode);
+
+		OGRE_EXCEPT(Ogre::Exception::ERR_NOT_IMPLEMENTED, "", "");
+	}
+};
+
 class MyWindowEventListener final : public Ogre::WindowEventListener
 {
 	bool mQuit = false;
+	nimble::RmlOgre::RenderInterface* mainRenderInterface = nullptr;
+	Rml::Context* rmlContext = nullptr;
 
 public:
+	MyWindowEventListener(
+		nimble::RmlOgre::RenderInterface* mainRenderInterface,
+		Rml::Context* rmlContext
+	) :
+		mainRenderInterface{mainRenderInterface},
+		rmlContext{rmlContext}
+	{}
 	void windowClosed( Ogre::Window *rw ) override { mQuit = true; }
+	void windowResized( Ogre::Window *rw ) override
+	{
+		auto size = Rml::Vector2i(rw->getWidth(), rw->getHeight());
+		this->mainRenderInterface->SetViewport(size);
+		this->rmlContext->SetDimensions(size);
+	}
 
 	bool getQuit() const { return mQuit; }
 };
@@ -175,6 +227,10 @@ int main( int argc, const char *argv[] )
 	root->getRenderSystem()->setConfigOption("sRGB Gamma Conversion", "Yes");
 	Window *window = root->initialise(true, "RmlOgre example");
 
+	Ogre::CompositorManager2 *compositorManager = root->getCompositorManager2();
+	compositorManager->setCompositorPassProvider(
+		OGRE_NEW MyCompositorPassProvider());
+
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE
 	// Note:  macBundlePath works for iOS too. It's misnamed.
 	const String resourcePath = Ogre::macResourcesPath();
@@ -218,45 +274,27 @@ int main( int argc, const char *argv[] )
 	itemNode->attachObject(item);
 
 
-	nimble::RmlOgre::RenderInterface renderInterface;
+	auto resolution = Rml::Vector2i(window->getWidth(), window->getHeight());
+	nimble::RmlOgre::RenderInterface renderInterface("Ui", sceneManager, resolution);
 	Rml::Context* context = Rml::CreateContext(
 		"Main",
-		Rml::Vector2i(window->getWidth(), window->getHeight()),
+		resolution,
 		&renderInterface
 	);
+	Rml::ElementDocument* document = context->LoadDocument("./media/rml/render_test1_geometry.rml");
+	if(document)
+		document->Show();
 
 
-	CompositorManager2 *compositorManager = root->getCompositorManager2();
-
-
-	Ogre::TextureGpu* uiOutput = Ogre::Root::getSingleton()
-		.getRenderSystem()
-		->getTextureGpuManager()
-		->createOrRetrieveTexture(
-			"UiOutput",
-			Ogre::GpuPageOutStrategy::Discard,
-			Ogre::TextureFlags::RenderToTexture,
-			Ogre::TextureTypes::Type2D);
-	uiOutput->setResolution(window->getWidth(), window->getHeight());
-	uiOutput->setPixelFormat(Ogre::PFG_RGBA16_FLOAT);
-	if(uiOutput->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
-		uiOutput->scheduleTransitionTo( Ogre::GpuResidency::Resident, nullptr );
-	auto* uiWorkspace = compositorManager->addWorkspace(
+	compositorManager->addWorkspace(
 		sceneManager,
-		uiOutput,
-		camera,
-		"UiWorkspace",
-		true);
-
-	auto* mainWorkspace = compositorManager->addWorkspace(
-		sceneManager,
-		{ window->getTexture(), uiOutput },
+		{ window->getTexture(), renderInterface.GetOutput() },
 		camera,
 		"ExampleWorkspace",
 		true);
 
 
-	MyWindowEventListener myWindowEventListener;
+	MyWindowEventListener myWindowEventListener(&renderInterface, context);
 	WindowEventUtilities::addWindowEventListener(window, &myWindowEventListener);
 
 	bool bQuit = false;
@@ -266,7 +304,12 @@ int main( int argc, const char *argv[] )
 		WindowEventUtilities::messagePump();
 		bQuit |= myWindowEventListener.getQuit();
 		if(!bQuit)
+		{
+			context->Update();
+			context->Render();
+			renderInterface.EndFrame();
 			bQuit |= !root->renderOneFrame();
+		}
 	}
 
 	WindowEventUtilities::removeWindowEventListener(window, &myWindowEventListener);
