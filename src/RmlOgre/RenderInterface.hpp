@@ -34,6 +34,7 @@ struct QueuedGeometry
 {
 	Geometry* geometry = nullptr;
 	Rml::Vector2f translation;
+	Ogre::HlmsUnlitDatablock* datablock = nullptr;
 };
 
 struct Pass
@@ -63,6 +64,7 @@ class RenderInterface : public Rml::RenderInterface
 
 	int datablockId = 0;
 	std::vector<Rml::CompiledGeometryHandle> releaseGeometry;
+	std::vector<Rml::TextureHandle> releaseTextures;
 
 	Ogre::SceneManager* sceneManager = nullptr;
 	Ogre::Camera* camera = nullptr;
@@ -78,6 +80,7 @@ class RenderInterface : public Rml::RenderInterface
 	void populateWorkspace();
 
 	void releaseBufferedGeometry();
+	void releaseBufferedTextures();
 
 public:
 	RenderInterface(

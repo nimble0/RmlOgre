@@ -149,6 +149,7 @@ void RenderInterface::populateWorkspace()
 	this->renderObjects.reserve(totalRenderObjects);
 
 	this->releaseBufferedGeometry();
+	this->releaseBufferedTextures();
 
 	auto geometryNode = this->geometryNodes.begin();
 	Ogre::IdString lastNode = "Start";
@@ -178,7 +179,7 @@ void RenderInterface::populateWorkspace()
 			);
 			auto& object = this->renderObjects.back();
 			object.setVao(queueObject.geometry->vao);
-			object.setDatablock(this->noTextureDatablock);
+			object.setDatablock(queueObject.datablock);
 
 			this->sceneNodes.emplace_back(
 				Ogre::Id::generateNewId<Ogre::Node>(),
@@ -225,6 +226,25 @@ void RenderInterface::releaseBufferedGeometry()
 	for(Rml::CompiledGeometryHandle geometry : this->releaseGeometry)
 		std::unique_ptr<Geometry>(reinterpret_cast<Geometry*>(geometry));
 	this->releaseGeometry.clear();
+}
+
+void RenderInterface::releaseBufferedTextures()
+{
+	Ogre::TextureGpuManager& textureManager = *Ogre::Root::getSingleton().getRenderSystem()
+		->getTextureGpuManager();
+
+	for(Rml::TextureHandle texture : this->releaseTextures)
+	{
+		auto* datablock = reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture);
+		auto* textureGpu = datablock->getTexture(0);
+
+		for(auto* r : datablock->getLinkedRenderables())
+			r->setDatablock(this->noTextureDatablock);
+
+		this->hlms->destroyDatablock(datablock->getName());
+		textureManager.destroyTexture(textureGpu);
+	}
+	this->releaseTextures.clear();
 }
 
 void RenderInterface::EndFrame()
@@ -285,6 +305,7 @@ void RenderInterface::RenderGeometry(
 	this->passes.back().queue.push_back({
 		reinterpret_cast<Geometry*>(geometry),
 		translation,
+		texture ? reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture) : this->noTextureDatablock
 	});
 }
 void RenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry)
@@ -296,15 +317,92 @@ Rml::TextureHandle RenderInterface::LoadTexture(
 	Rml::Vector2i& texture_dimensions,
 	const Rml::String& source)
 {
-	return Rml::TextureHandle{};
+	Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton()
+		.getRenderSystem()
+		->getTextureGpuManager();
+	Ogre::TextureGpu* texture = nullptr;
+	if(!source.empty())
+	{
+		texture = textureManager->createOrRetrieveTexture(
+			source,
+			Ogre::GpuPageOutStrategy::Discard,
+			Ogre::TextureFlags::AutomaticBatching | Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB,
+			Ogre::TextureTypes::Type2D,
+			Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+		texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+	}
+
+	if(!texture)
+		return Rml::TextureHandle{};
+
+	texture->waitForMetadata();
+	texture_dimensions = Rml::Vector2i(texture->getWidth(), texture->getHeight());
+
+	Ogre::String id = this->workspaceDef->getNameStr();
+	id.append("_Texture_");
+	id.append(std::to_string(this->datablockId++));
+	auto* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+		this->hlms->createDatablock(id, id, this->macroblock, this->blendBlock, Ogre::HlmsParamVec()));
+	datablock->setTexture(0, texture);
+	datablock->setUseColour(true);
+
+	return reinterpret_cast<Rml::TextureHandle>(datablock);
 }
 Rml::TextureHandle RenderInterface::GenerateTexture(
 	Rml::Span<const Rml::byte> source,
 	Rml::Vector2i source_dimensions)
 {
-	return Rml::TextureHandle{};
+	Ogre::String id = this->workspaceDef->getNameStr();
+	id.append("_Texture_");
+	id.append(std::to_string(this->datablockId++));
+
+	std::size_t size = Ogre::PixelFormatGpuUtils::calculateSizeBytes(
+        source_dimensions.x, source_dimensions.y, 1u, 1u, Ogre::PixelFormatGpu::PFG_RGBA8_UNORM_SRGB, 1u, 4u);
+	Ogre::uint8* data = reinterpret_cast<Ogre::uint8*>(
+		OGRE_MALLOC_SIMD(size, Ogre::MEMCATEGORY_GENERAL));
+	std::copy(source.begin(), source.end(), data);
+
+	auto* image = OGRE_NEW Ogre::Image2;
+	image->loadDynamicImage(
+		data,
+		source_dimensions.x,
+		source_dimensions.y,
+		1u,
+		Ogre::TextureTypes::Type2D,
+		Ogre::PixelFormatGpu::PFG_RGBA8_UNORM_SRGB,
+		true,
+		1u);
+
+	Ogre::TextureGpuManager& textureManager = *Ogre::Root::getSingleton().getRenderSystem()
+		->getTextureGpuManager();
+	Ogre::TextureGpu* texture = textureManager.createOrRetrieveTexture(
+		id,
+		Ogre::GpuPageOutStrategy::AlwaysKeepSystemRamCopy,
+		Ogre::TextureFlags::AutomaticBatching,
+		Ogre::TextureTypes::Type2D,
+		Ogre::BLANKSTRING);
+	texture->setNumMipmaps(1);
+	texture->setResolution(source_dimensions.x, source_dimensions.y);
+	texture->setPixelFormat(Ogre::PixelFormatGpu::PFG_RGBA8_UNORM_SRGB);
+
+	bool canUseSynchronousUpload =
+		texture->getNextResidencyStatus() == Ogre::GpuResidency::Resident
+		&& texture->isDataReady();
+	if(!canUseSynchronousUpload)
+		texture->waitForData();
+	texture->scheduleTransitionTo(Ogre::GpuResidency::Resident, image, false);
+
+	auto* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+		this->hlms->createDatablock(id, id, this->macroblock, this->blendBlock, Ogre::HlmsParamVec()));
+	datablock->setTexture(0, texture);
+	datablock->setUseColour(true);
+
+	return reinterpret_cast<Rml::TextureHandle>(datablock);
 }
-void RenderInterface::ReleaseTexture(Rml::TextureHandle texture) {}
+void RenderInterface::ReleaseTexture(Rml::TextureHandle texture)
+{
+	this->releaseTextures.push_back(texture);
+}
 
 void RenderInterface::EnableScissorRegion(bool enable) {}
 void RenderInterface::SetScissorRegion(Rml::Rectanglei region) {}

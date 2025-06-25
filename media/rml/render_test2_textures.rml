@@ -1,0 +1,40 @@
+// Full window 3x3 checkerboard image with black border
+// Large text "Test" at top of window, horizontally centred,
+// with transparent red background
+<rml>
+	<head>
+		<style>
+			body
+			{
+				width: 100%;
+				height: 100%;
+				background-color: #005;
+				font-family: "LatoLatin";
+			}
+			img
+			{
+				z-index: -10;
+				position: absolute;
+				left: 0;
+				right: 0;
+				top: 0;
+				bottom: 0;
+				width: 100%;
+				height: 100%;
+			}
+			h1
+			{
+				display: block;
+				text-align: center;
+				background-color: #5005;
+				font-size: 30em;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Test</h1>
+		<img src="checkerboard.png" />
+	</body>
+</rml>
+
+

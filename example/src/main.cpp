@@ -248,6 +248,10 @@ int main( int argc, const char *argv[] )
 	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups(true);
 
 	Rml::Initialise();
+	Rml::LoadFontFace("./media/fonts/LatoLatin-Bold.ttf");
+	Rml::LoadFontFace("./media/fonts/LatoLatin-BoldItalic.ttf");
+	Rml::LoadFontFace("./media/fonts/LatoLatin-Italic.ttf");
+	Rml::LoadFontFace("./media/fonts/LatoLatin-Regular.ttf");
 
 	// Create SceneManager
 	const size_t numThreads = 1u;
@@ -281,7 +285,7 @@ int main( int argc, const char *argv[] )
 		resolution,
 		&renderInterface
 	);
-	Rml::ElementDocument* document = context->LoadDocument("./media/rml/render_test1_geometry.rml");
+	Rml::ElementDocument* document = context->LoadDocument("./media/rml/render_test2_textures.rml");
 	if(document)
 		document->Show();
 
