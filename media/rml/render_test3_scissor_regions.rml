@@ -1,0 +1,40 @@
+// Full window blue background
+// 200px green square
+// No red or yellow visible
+<rml>
+	<head>
+		<style>
+			body
+			{
+				width: 100%;
+				height: 100%;
+				padding: 100px;
+				background-color: #005;
+			}
+			#outer
+			{
+				display: block;
+				width: 200px;
+				height: 200px;
+				overflow: hidden;
+				background-color: #500;
+			}
+			#inner
+			{
+				position: relative;
+				left: -50px;
+				top: -50px;
+				display: block;
+				width: 200px;
+				height: 200px;
+				border: 50px #550;
+				background-color: #050;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="outer">
+			<div id="inner" />
+		</div>
+	</body>
+</rml>

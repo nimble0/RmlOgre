@@ -201,6 +201,23 @@ void RenderInterface::populateWorkspace()
 			}
 		}
 
+		if(pass.settings.enableScissor)
+		{
+			float width = this->output->getWidth();
+			float height = this->output->getHeight();
+			node.passDef->mVpRect[0].mVpScissorLeft = pass.settings.scissorRegion.Left() / width;
+			node.passDef->mVpRect[0].mVpScissorTop = pass.settings.scissorRegion.Top() / height;
+			node.passDef->mVpRect[0].mVpScissorWidth = pass.settings.scissorRegion.Width() / width;
+			node.passDef->mVpRect[0].mVpScissorHeight = pass.settings.scissorRegion.Height() / height;
+		}
+		else
+		{
+			node.passDef->mVpRect[0].mVpScissorLeft = 0.0f;
+			node.passDef->mVpRect[0].mVpScissorTop = 0.0f;
+			node.passDef->mVpRect[0].mVpScissorWidth = 1.0f;
+			node.passDef->mVpRect[0].mVpScissorHeight = 1.0f;
+		}
+
 		auto nodeName = node.node->getName();
 		this->workspaceDef->connect(lastNode, nodeName);
 		lastNode = nodeName;
@@ -404,5 +421,17 @@ void RenderInterface::ReleaseTexture(Rml::TextureHandle texture)
 	this->releaseTextures.push_back(texture);
 }
 
-void RenderInterface::EnableScissorRegion(bool enable) {}
-void RenderInterface::SetScissorRegion(Rml::Rectanglei region) {}
+void RenderInterface::EnableScissorRegion(bool enable)
+{
+	Pass newPass;
+	newPass.settings = this->passes.back().settings;
+	newPass.settings.enableScissor = enable;
+	this->passes.push_back(std::move(newPass));
+}
+void RenderInterface::SetScissorRegion(Rml::Rectanglei region)
+{
+	Pass newPass;
+	newPass.settings = this->passes.back().settings;
+	newPass.settings.scissorRegion = region;
+	this->passes.push_back(std::move(newPass));
+}

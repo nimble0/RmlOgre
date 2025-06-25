@@ -37,8 +37,15 @@ struct QueuedGeometry
 	Ogre::HlmsUnlitDatablock* datablock = nullptr;
 };
 
+struct PassSettings
+{
+	bool enableScissor = false;
+	Rml::Rectanglei scissorRegion;
+};
+
 struct Pass
 {
+	PassSettings settings;
 	std::vector<QueuedGeometry> queue;
 };
 
