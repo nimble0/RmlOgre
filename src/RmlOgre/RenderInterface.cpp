@@ -423,15 +423,27 @@ void RenderInterface::ReleaseTexture(Rml::TextureHandle texture)
 
 void RenderInterface::EnableScissorRegion(bool enable)
 {
-	Pass newPass;
-	newPass.settings = this->passes.back().settings;
-	newPass.settings.enableScissor = enable;
-	this->passes.push_back(std::move(newPass));
+	auto& lastPass = this->passes.back();
+	if(lastPass.queue.empty())
+		lastPass.settings.enableScissor = enable;
+	else
+	{
+		Pass newPass;
+		newPass.settings = lastPass.settings;
+		newPass.settings.enableScissor = enable;
+		this->passes.push_back(std::move(newPass));
+	}
 }
 void RenderInterface::SetScissorRegion(Rml::Rectanglei region)
 {
-	Pass newPass;
-	newPass.settings = this->passes.back().settings;
-	newPass.settings.scissorRegion = region;
-	this->passes.push_back(std::move(newPass));
+	auto& lastPass = this->passes.back();
+	if(lastPass.queue.empty())
+		lastPass.settings.scissorRegion = region;
+	else
+	{
+		Pass newPass;
+		newPass.settings = lastPass.settings;
+		newPass.settings.scissorRegion = region;
+		this->passes.push_back(std::move(newPass));
+	}
 }
