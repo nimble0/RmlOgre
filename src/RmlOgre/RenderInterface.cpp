@@ -45,6 +45,10 @@ RenderInterface::RenderInterface(
 	this->output->setPixelFormat(Ogre::PFG_RGBA16_FLOAT);
 	this->SetViewport(resolution);
 
+	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
+	this->workspaceDef = compositorManager->addWorkspaceDefinition(name);
+	this->workspaceDef->connectExternal(0, "End", 1);
+
 	this->buildWorkspace(8);
 
 	this->passes.push_back({});
@@ -77,13 +81,16 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 {
 	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
 
+	// This is just to prevent warnings about unconnected channels,
+	// populateWorkspace will overwrite this connection
+	this->workspaceDef->connect("Start", 0, "End", 0);
+
 	// Clear existing
 	for(auto& node : this->geometryNodes)
 		compositorManager->removeNodeDefinition(node.node->getName());
-
-	this->workspaceDef = compositorManager->addWorkspaceDefinition(this->output->getNameStr());
-	this->workspaceDef->connect("Start", 0, "End", 0);
-	this->workspaceDef->connectExternal(0, "End", 1);
+	this->geometryNodes.clear();
+	if(this->workspace)
+		compositorManager->removeWorkspace(this->workspace);
 
 	std::vector<std::pair<Ogre::IdString, CompositorPassGeometryDef*>> workingNodes;
 	for(std::size_t i = 0; i < numGeometryNodes; ++i)
@@ -127,13 +134,21 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 		auto* passDef = workingNode.second;
 		this->geometryNodes.push_back(GeometryNode{node, passDef});
 	}
+
+	// This is just to prevent warnings about multiple connections
+	this->workspaceDef->clearAllInterNodeConnections();
 }
 
 void RenderInterface::populateWorkspace()
 {
+	if(this->passes.size() > geometryNodes.size())
+	{
+		auto numGeometryNodes = geometryNodes.size();
+		while(numGeometryNodes < this->passes.size())
+			numGeometryNodes *= 2;
+		this->buildWorkspace(numGeometryNodes);
+	}
 	this->workspaceDef->clearAllInterNodeConnections();
-
-	assert(this->passes.size() <= geometryNodes.size());
 
 	for(auto& node : this->geometryNodes)
 		if(node.passDef->renderQueue)

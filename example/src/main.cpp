@@ -285,7 +285,7 @@ int main( int argc, const char *argv[] )
 		resolution,
 		&renderInterface
 	);
-	Rml::ElementDocument* document = context->LoadDocument("./media/rml/render_test3_scissor_regions.rml");
+	Rml::ElementDocument* document = context->LoadDocument("./media/rml/render_test4_compositor_rebuild.rml");
 	if(document)
 		document->Show();
 
