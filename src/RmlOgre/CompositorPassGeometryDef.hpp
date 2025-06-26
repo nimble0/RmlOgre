@@ -13,8 +13,6 @@ namespace nimble::RmlOgre {
 class CompositorPassGeometryDef : public Ogre::CompositorPassDef
 {
 public:
-	std::unique_ptr<Ogre::RenderQueue> renderQueue;
-
 	CompositorPassGeometryDef(Ogre::CompositorTargetDef* parentTargetDef) :
 		Ogre::CompositorPassDef(Ogre::PASS_CUSTOM, parentTargetDef)
 	{

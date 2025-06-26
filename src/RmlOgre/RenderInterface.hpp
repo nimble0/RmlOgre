@@ -27,7 +27,7 @@ class TextureGpu;
 
 namespace nimble::RmlOgre {
 
-class CompositorPassGeometryDef;
+class CompositorPassGeometry;
 struct Geometry;
 
 struct QueuedGeometry
@@ -49,12 +49,6 @@ struct Pass
 	std::vector<QueuedGeometry> queue;
 };
 
-struct GeometryNode
-{
-	Ogre::CompositorNode* node = nullptr;
-	CompositorPassGeometryDef* passDef = nullptr;
-};
-
 class RenderInterface : public Rml::RenderInterface
 {
 	Ogre::HlmsUnlit* hlms = nullptr;
@@ -65,7 +59,7 @@ class RenderInterface : public Rml::RenderInterface
 	Ogre::CompositorWorkspace* workspace = nullptr;
 	Ogre::CompositorWorkspaceDef* workspaceDef = nullptr;
 	Ogre::TextureGpu* output = nullptr;
-	std::vector<GeometryNode> geometryNodes;
+	std::vector<Ogre::CompositorNode*> geometryNodes;
 
 	std::vector<Pass> passes;
 

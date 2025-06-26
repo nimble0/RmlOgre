@@ -87,12 +87,12 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 
 	// Clear existing
 	for(auto& node : this->geometryNodes)
-		compositorManager->removeNodeDefinition(node.node->getName());
+		compositorManager->removeNodeDefinition(node->getName());
 	this->geometryNodes.clear();
 	if(this->workspace)
 		compositorManager->removeWorkspace(this->workspace);
 
-	std::vector<std::pair<Ogre::IdString, CompositorPassGeometryDef*>> workingNodes;
+	std::vector<Ogre::IdString> nodeNames;
 	for(std::size_t i = 0; i < numGeometryNodes; ++i)
 	{
 		Ogre::String name = this->workspaceDef->getNameStr();
@@ -110,14 +110,12 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 		node->setNumTargetPass(1);
 		auto* target = node->addTargetPass("rt0");
 		target->setNumPasses(1);
-		auto* geometryPass = static_cast<CompositorPassGeometryDef*>(target->addPass(
-			Ogre::CompositorPassType::PASS_CUSTOM,
-			"rml_geometry"));
+		target->addPass(Ogre::CompositorPassType::PASS_CUSTOM, "rml_geometry");
 
 		auto nodeName = node->getName();
 		this->workspaceDef->addNodeAlias(nodeName, nodeName);
 
-		workingNodes.push_back({nodeName, geometryPass});
+		nodeNames.push_back(nodeName);
 	}
 
 	this->workspace = compositorManager->addWorkspace(
@@ -127,13 +125,9 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 		this->workspaceDef->getName(),
 		true);
 
-	this->geometryNodes.reserve(workingNodes.size());
-	for(auto& workingNode : workingNodes)
-	{
-		auto* node = this->workspace->findNode(workingNode.first);
-		auto* passDef = workingNode.second;
-		this->geometryNodes.push_back(GeometryNode{node, passDef});
-	}
+	this->geometryNodes.reserve(nodeNames.size());
+	for(auto& nodeName : nodeNames)
+		this->geometryNodes.push_back(this->workspace->findNode(nodeName));
 
 	// This is just to prevent warnings about multiple connections
 	this->workspaceDef->clearAllInterNodeConnections();
@@ -151,8 +145,14 @@ void RenderInterface::populateWorkspace()
 	this->workspaceDef->clearAllInterNodeConnections();
 
 	for(auto& node : this->geometryNodes)
-		if(node.passDef->renderQueue)
-			node.passDef->renderQueue->clear();
+	{
+		auto& passes = node->_getPasses();
+		if(passes.size() >= 1)
+		{
+			auto* nodePass = static_cast<CompositorPassGeometry*>(passes.at(0));
+			nodePass->renderQueue->clear();
+		}
+	}
 
 	std::size_t totalRenderObjects = 0;
 	for(auto& pass : passes)
@@ -166,24 +166,38 @@ void RenderInterface::populateWorkspace()
 	this->releaseBufferedGeometry();
 	this->releaseBufferedTextures();
 
+
+	// Connect required nodes in workspace, which creates passes
 	auto geometryNode = this->geometryNodes.begin();
 	Ogre::IdString lastNode = "Start";
-	for(auto& pass : passes)
+	std::vector<Ogre::CompositorNode*> activeNodes;
+	activeNodes.reserve(this->passes.size());
+	for(std::size_t i = 0; i < this->passes.size(); ++i)
 	{
 		auto& node = *geometryNode++;
-		node.node->setEnabled(true);
+		node->setEnabled(true);
 
-		if(!node.passDef->renderQueue)
-		{
-			node.passDef->renderQueue = std::make_unique<Ogre::RenderQueue>(
-				Ogre::Root::getSingleton().getHlmsManager(),
-				this->sceneManager,
-				Ogre::Root::getSingleton().getRenderSystem()->getVaoManager());
-			node.passDef->renderQueue->setSortRenderQueue(
-				RenderObject::RENDER_QUEUE_ID,
-				Ogre::RenderQueue::RqSortMode::DisableSort);
-		}
+		auto nodeName = node->getName();
+		activeNodes.push_back(node);
+		this->workspaceDef->connect(lastNode, nodeName);
+		lastNode = nodeName;
+	}
+	for(; geometryNode != this->geometryNodes.end(); ++geometryNode)
+		(*geometryNode)->setEnabled(false);
 
+	this->workspaceDef->connect(lastNode, 0, "End", 0);
+	this->workspace->reconnectAllNodes();
+
+
+	// Fill in passes with data
+	auto nodeIter = activeNodes.begin();
+	for(auto& pass : this->passes)
+	{
+		auto* node = *nodeIter++;
+		auto& passes = node->_getPasses();
+		if(passes.empty())
+			continue;
+		auto* nodePass = static_cast<CompositorPassGeometry*>(passes.at(0));
 		for(auto& queueObject : pass.queue)
 		{
 			this->renderObjects.emplace_back(
@@ -207,7 +221,7 @@ void RenderInterface::populateWorkspace()
 
 			for(auto renderable : object.mRenderables)
 			{
-				node.passDef->renderQueue->addRenderableV2(
+				nodePass->renderQueue->addRenderableV2(
 					0,
 					RenderObject::RENDER_QUEUE_ID,
 					false,
@@ -220,23 +234,17 @@ void RenderInterface::populateWorkspace()
 		{
 			float width = this->output->getWidth();
 			float height = this->output->getHeight();
-			node.passDef->mVpRect[0].mVpScissorLeft = pass.settings.scissorRegion.Left() / width;
-			node.passDef->mVpRect[0].mVpScissorTop = pass.settings.scissorRegion.Top() / height;
-			node.passDef->mVpRect[0].mVpScissorWidth = pass.settings.scissorRegion.Width() / width;
-			node.passDef->mVpRect[0].mVpScissorHeight = pass.settings.scissorRegion.Height() / height;
+			nodePass->scissorRegion = Ogre::Vector4{
+				pass.settings.scissorRegion.Left() / width,
+				pass.settings.scissorRegion.Top() / height,
+				pass.settings.scissorRegion.Width() / width,
+				pass.settings.scissorRegion.Height() / height
+			};
 		}
 		else
-		{
-			node.passDef->mVpRect[0].mVpScissorLeft = 0.0f;
-			node.passDef->mVpRect[0].mVpScissorTop = 0.0f;
-			node.passDef->mVpRect[0].mVpScissorWidth = 1.0f;
-			node.passDef->mVpRect[0].mVpScissorHeight = 1.0f;
-		}
-
-		auto nodeName = node.node->getName();
-		this->workspaceDef->connect(lastNode, nodeName);
-		lastNode = nodeName;
+			nodePass->scissorRegion = Ogre::Vector4{0.0f, 0.0f, 1.0f, 1.0f};
 	}
+
 
 	if(!this->sceneNodes.empty())
 	{
@@ -244,13 +252,6 @@ void RenderInterface::populateWorkspace()
 		std::size_t numNodes = this->nodeMemoryManager.getFirstNode(t, 0);
 		Ogre::Node::updateAllTransforms(numNodes, t);
 	}
-
-	this->workspaceDef->connect(lastNode, 0, "End", 0);
-
-	for(; geometryNode != this->geometryNodes.end(); ++geometryNode)
-		geometryNode->node->setEnabled(false);
-
-	this->workspace->reconnectAllNodes();
 }
 
 void RenderInterface::releaseBufferedGeometry()
