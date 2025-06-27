@@ -48,6 +48,9 @@ RenderInterface::RenderInterface(
 	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
 	this->workspaceDef = compositorManager->addWorkspaceDefinition(name);
 	this->workspaceDef->connectExternal(0, "End", 1);
+	// Prevent warnings
+	// Can't disable nodes in scripts
+	compositorManager->getNodeDefinitionNonConst("UiRender")->setStartEnabled(false);
 
 	this->buildWorkspace(8);
 
@@ -87,7 +90,7 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 
 	// Clear existing
 	for(auto& node : this->geometryNodes)
-		compositorManager->removeNodeDefinition(node->getName());
+		this->workspaceDef->removeNodeAlias(node->getName());
 	this->geometryNodes.clear();
 	if(this->workspace)
 		compositorManager->removeWorkspace(this->workspace);
@@ -95,27 +98,9 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 	std::vector<Ogre::IdString> nodeNames;
 	for(std::size_t i = 0; i < numGeometryNodes; ++i)
 	{
-		Ogre::String name = this->workspaceDef->getNameStr();
-		name.append("_UiRender_");
-		name.append(std::to_string(i));
-		Ogre::CompositorNodeDef* node = compositorManager->addNodeDefinition(name);
-		node->setStartEnabled(false);
-		node->addTextureSourceName("rt0", 0, Ogre::TextureDefinitionBase::TextureSource::TEXTURE_INPUT);
-		node->addTextureSourceName("rt1", 1, Ogre::TextureDefinitionBase::TextureSource::TEXTURE_INPUT);
-
-		node->setNumOutputChannels(2);
-		node->mapOutputChannel(0, "rt0");
-		node->mapOutputChannel(1, "rt1");
-
-		node->setNumTargetPass(1);
-		auto* target = node->addTargetPass("rt0");
-		target->setNumPasses(1);
-		target->addPass(Ogre::CompositorPassType::PASS_CUSTOM, "rml_geometry");
-
-		auto nodeName = node->getName();
-		this->workspaceDef->addNodeAlias(nodeName, nodeName);
-
-		nodeNames.push_back(nodeName);
+		auto name = Ogre::IdString("UiRender_") + Ogre::IdString(i);
+		this->workspaceDef->addNodeAlias(name, "UiRender");
+		nodeNames.push_back(name);
 	}
 
 	this->workspace = compositorManager->addWorkspace(
@@ -127,7 +112,11 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 
 	this->geometryNodes.reserve(nodeNames.size());
 	for(auto& nodeName : nodeNames)
-		this->geometryNodes.push_back(this->workspace->findNode(nodeName));
+	{
+		auto* node = this->workspace->findNode(nodeName);
+		node->setEnabled(false);
+		this->geometryNodes.push_back(node);
+	}
 
 	// This is just to prevent warnings about multiple connections
 	this->workspaceDef->clearAllInterNodeConnections();
@@ -179,7 +168,11 @@ void RenderInterface::populateWorkspace()
 
 		auto nodeName = node->getName();
 		activeNodes.push_back(node);
-		this->workspaceDef->connect(lastNode, nodeName);
+		// Ogre bug stops this working
+		// this->workspaceDef->connect(lastNode, nodeName);
+		// Workaround is using overload that specifies node channels
+		this->workspaceDef->connect(lastNode, 0, nodeName, 0);
+		this->workspaceDef->connect(lastNode, 1, nodeName, 1);
 		lastNode = nodeName;
 	}
 	for(; geometryNode != this->geometryNodes.end(); ++geometryNode)

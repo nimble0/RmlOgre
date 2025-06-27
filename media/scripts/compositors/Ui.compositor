@@ -37,3 +37,17 @@ compositor_node End
 		}
 	}
 }
+
+compositor_node UiRender
+{
+	in 0 rt0
+	in 1 rt1
+
+	target rt0
+	{
+		pass custom rml_geometry {}
+	}
+
+	out 0 rt0
+	out 1 rt1
+}
