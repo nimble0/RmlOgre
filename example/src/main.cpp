@@ -24,6 +24,8 @@
 	#include "OSX/macUtils.h"
 #endif
 
+#include <cstring>
+
 
 static void registerHlms(Ogre::ConfigFile& cf, const Ogre::String& resourcePath)
 {
@@ -194,6 +196,15 @@ int main( int argc, const char *argv[] )
 {
 	using namespace Ogre;
 
+	const char* documentPath = "./media/rml/demo.rml";
+#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
+	if(std::strlen(strCmdLine))
+		documentPath = strCmdLine;
+#else
+	if(argc >= 2)
+		documentPath = argv[1];
+#endif
+
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE
 	const String pluginsFolder = macResourcesPath();
 	const String writeAccessFolder = macLogPath();
@@ -285,7 +296,7 @@ int main( int argc, const char *argv[] )
 		resolution,
 		&renderInterface
 	);
-	Rml::ElementDocument* document = context->LoadDocument("./media/rml/render_test4_compositor_rebuild.rml");
+	Rml::ElementDocument* document = context->LoadDocument(documentPath);
 	if(document)
 		document->Show();
 
