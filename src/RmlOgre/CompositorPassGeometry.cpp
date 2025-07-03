@@ -134,6 +134,7 @@ void CompositorPassGeometry::execute(const Ogre::Camera* lodCamera)
 	//Fire the listener in case it wants to change anything
 	notifyPassPreExecuteListeners();
 
+	this->camera->setCustomProjectionMatrix(true, this->projectionMatrix);
 	Ogre::SceneManager* sceneManager = this->camera->getSceneManager();
 	sceneManager->_setCamerasInProgress(Ogre::CamerasInProgress(this->camera));
 	sceneManager->_setCurrentCompositorPass(this);

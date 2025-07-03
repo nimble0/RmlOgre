@@ -250,3 +250,10 @@ void RenderInterface::SetScissorRegion(Rml::Rectanglei region)
 {
 	this->renderPassSettings.scissorRegion = region;
 }
+
+void RenderInterface::SetTransform(const Rml::Matrix4f* transform)
+{
+	this->renderPassSettings.transform = transform
+		? Ogre::Matrix4(transform->data()).transpose()
+		: Ogre::Matrix4::IDENTITY;
+}

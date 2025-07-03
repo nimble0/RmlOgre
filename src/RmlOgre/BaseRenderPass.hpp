@@ -3,6 +3,8 @@
 
 #include "BasePass.hpp"
 
+#include <OgreMatrix4.h>
+
 #include <RmlUi/Core/RenderInterface.h>
 
 
@@ -31,11 +33,13 @@ struct RenderPassSettings
 {
 	bool enableScissor = false;
 	Rml::Rectanglei scissorRegion;
+	Ogre::Matrix4 transform = Ogre::Matrix4::IDENTITY;
 
 	bool operator==(const RenderPassSettings& b) const
 	{
 		return this->enableScissor == b.enableScissor
-			&& this->scissorRegion == b.scissorRegion;
+			&& this->scissorRegion == b.scissorRegion
+			&& this->transform == b.transform;
 	}
 	bool operator!=(const RenderPassSettings& b) const
 	{

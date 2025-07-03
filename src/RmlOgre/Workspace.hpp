@@ -59,6 +59,7 @@ class Workspace
 
 	std::array<NodeType, NUM_NODE_TYPES> nodeTypes;
 
+	Ogre::Matrix4 projectionMatrix_ = Ogre::Matrix4::IDENTITY;
 	Ogre::SceneManager* sceneManager = nullptr;
 	Ogre::Camera* camera = nullptr;
 	Ogre::ObjectMemoryManager objectMemoryManager;
@@ -99,6 +100,7 @@ public:
 	Ogre::IdString getName() const;
 	Ogre::uint32 width() const;
 	Ogre::uint32 height() const;
+	const Ogre::Matrix4& projectionMatrix() const { return this->projectionMatrix_; }
 };
 
 }

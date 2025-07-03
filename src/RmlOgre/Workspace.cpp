@@ -239,13 +239,13 @@ void Workspace::updateProjectionMatrix()
 {
 	float scaleX = 2.0f / this->output->getWidth();
 	float scaleY = -2.0f / this->output->getHeight();
-	this->camera->setCustomProjectionMatrix(true, Ogre::Matrix4
+	this->projectionMatrix_ = Ogre::Matrix4
 	{
 		scaleX, 0.0,    0.0, -1.0,
 		0.0,    scaleY, 0.0, 1.0,
 		0.0,    0.0,    1.0, 0.0,
 		0.0,    0.0,    0.0, 1.0
-	});
+	};
 }
 
 void Workspace::clearAll()

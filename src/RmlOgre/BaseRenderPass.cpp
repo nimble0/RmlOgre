@@ -71,4 +71,6 @@ void BaseRenderPass::writeRenderPass(
 	}
 	else
 		nodePass->scissorRegion = Ogre::Vector4{0.0f, 0.0f, 1.0f, 1.0f};
+
+	nodePass->projectionMatrix = workspace.projectionMatrix() * this->settings.transform;
 }

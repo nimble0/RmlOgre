@@ -74,6 +74,8 @@ public:
 
 	void EnableScissorRegion(bool enable) override;
 	void SetScissorRegion(Rml::Rectanglei region) override;
+
+	void SetTransform(const Rml::Matrix4f* transform) override;
 };
 
 }
