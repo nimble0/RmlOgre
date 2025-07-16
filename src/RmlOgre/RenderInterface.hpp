@@ -2,54 +2,24 @@
 #define NIMBLE_RMLOGRE_RENDERINTERFACE_HPP
 
 #include "RenderObject.hpp"
+#include "Workspace.hpp"
 
-#include <Math/Array/OgreObjectMemoryManager.h>
-#include <Math/Array/OgreNodeMemoryManager.h>
 #include <OgreHlmsDatablock.h>
 #include <OgreHlmsSamplerblock.h>
-#include <OgreMemoryStdAlloc.h>
 
 #include <RmlUi/Core/RenderInterface.h>
 
 
 namespace Ogre {
 
-class Camera;
-class CompositorNode;
-class CompositorNodeDef;
-class CompositorWorkspace;
-class CompositorWorkspaceDef;
 class HlmsUnlit;
 class HlmsUnlitDatablock;
 class SceneManager;
 class TextureGpu;
-class VertexArrayObject;
 
 }
 
 namespace nimble::RmlOgre {
-
-class CompositorPassGeometry;
-struct Geometry;
-
-struct QueuedGeometry
-{
-	Ogre::VertexArrayObject* vao = nullptr;
-	Rml::Vector2f translation;
-	Ogre::HlmsUnlitDatablock* datablock = nullptr;
-};
-
-struct PassSettings
-{
-	bool enableScissor = false;
-	Rml::Rectanglei scissorRegion;
-};
-
-struct Pass
-{
-	PassSettings settings;
-	std::vector<QueuedGeometry> queue;
-};
 
 class RenderInterface : public Rml::RenderInterface
 {
@@ -59,31 +29,14 @@ class RenderInterface : public Rml::RenderInterface
 	Ogre::HlmsSamplerblock samplerblock;
 	Ogre::HlmsUnlitDatablock* noTextureDatablock;
 
-	Ogre::CompositorWorkspace* workspace = nullptr;
-	Ogre::CompositorWorkspaceDef* workspaceDef = nullptr;
-	Ogre::TextureGpu* output = nullptr;
-	Ogre::TextureGpu* background = nullptr;
-	std::vector<Ogre::CompositorNode*> geometryNodes;
-
-	std::vector<Pass> passes;
+	RenderPassSettings renderPassSettings;
+	Passes passes;
 
 	int datablockId = 0;
 	std::vector<Rml::CompiledGeometryHandle> releaseGeometries;
 	std::vector<Rml::TextureHandle> releaseTextures;
 
-	Ogre::SceneManager* sceneManager = nullptr;
-	Ogre::Camera* camera = nullptr;
-	Ogre::ObjectMemoryManager objectMemoryManager;
-	Ogre::NodeMemoryManager nodeMemoryManager;
-	// Storing Ogre::SceneNode and RmlUiRenderObject in vectors only possible
-	// because no SceneManager and manually controlling Ogre::RenderQueue.
-	// No parent or child nodes allowed because of storing Ogre::SceneNode in vector
-	std::vector<Ogre::SceneNode> sceneNodes;
-	std::vector<RenderObject, Ogre::STLAllocator<RenderObject, Ogre::AlignAllocPolicy<>>> renderObjects;
-
-	void buildWorkspace(std::size_t numGeometryNodes);
-	void clearWorkspace();
-	void populateWorkspace();
+	Workspace workspace;
 
 	void releaseBufferedGeometries();
 	void releaseBufferedTextures();

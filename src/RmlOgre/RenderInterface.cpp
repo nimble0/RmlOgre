@@ -33,24 +33,8 @@ RenderInterface::RenderInterface(
 	Ogre::TextureGpu* background
 ) :
 	hlms{static_cast<Ogre::HlmsUnlit*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT))},
-	output{output},
-	background{background},
-	sceneManager{sceneManager}
+	workspace(name, sceneManager, output, background)
 {
-	this->camera = this->sceneManager->createCamera(name + "_Camera");
-
-	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
-	this->workspaceDef = compositorManager->addWorkspaceDefinition(name);
-	this->workspaceDef->connectExternal(0, "Rml/End", 1);
-	this->workspaceDef->connectExternal(1, "Rml/Start", 0);
-	// Prevent warnings
-	// Can't disable nodes in scripts
-	compositorManager->getNodeDefinitionNonConst("Rml/Render")->setStartEnabled(false);
-
-	this->buildWorkspace(8);
-
-	this->passes.push_back({});
-
 	this->macroblock.mScissorTestEnabled = true;
 	this->macroblock.mDepthCheck = false;
 	this->macroblock.mDepthWrite = false;
@@ -76,175 +60,6 @@ RenderInterface::RenderInterface(
 				Ogre::HlmsParamVec())
 		);
 	this->noTextureDatablock->setUseColour(true);
-}
-
-void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
-{
-	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
-
-	// This is just to prevent warnings about unconnected channels,
-	// populateWorkspace will overwrite this connection
-	this->workspaceDef->connect("Rml/Start", 0, "Rml/End", 0);
-
-	// Clear existing
-	for(auto& node : this->geometryNodes)
-		this->workspaceDef->removeNodeAlias(node->getName());
-	this->geometryNodes.clear();
-	if(this->workspace)
-		compositorManager->removeWorkspace(this->workspace);
-
-	std::vector<Ogre::IdString> nodeNames;
-	for(std::size_t i = 0; i < numGeometryNodes; ++i)
-	{
-		auto name = Ogre::IdString("Rml/Render_") + Ogre::IdString(i);
-		this->workspaceDef->addNodeAlias(name, "Rml/Render");
-		nodeNames.push_back(name);
-	}
-
-	this->workspace = compositorManager->addWorkspace(
-		this->sceneManager,
-		{ this->output, this->background },
-		this->camera,
-		this->workspaceDef->getName(),
-		true);
-
-	this->geometryNodes.reserve(nodeNames.size());
-	for(auto& nodeName : nodeNames)
-	{
-		auto* node = this->workspace->findNode(nodeName);
-		node->setEnabled(false);
-		this->geometryNodes.push_back(node);
-	}
-
-	// This is just to prevent warnings about multiple connections
-	this->workspaceDef->clearAllInterNodeConnections();
-}
-
-void RenderInterface::clearWorkspace()
-{
-	for(auto& node : this->geometryNodes)
-	{
-		auto& passes = node->_getPasses();
-		if(passes.size() >= 1)
-		{
-			auto* nodePass = static_cast<CompositorPassGeometry*>(passes.at(0));
-			nodePass->renderQueue->clear();
-		}
-	}
-
-	this->sceneNodes.clear();
-	this->renderObjects.clear();
-}
-
-void RenderInterface::populateWorkspace()
-{
-	if(this->passes.size() > geometryNodes.size())
-	{
-		auto numGeometryNodes = geometryNodes.size();
-		while(numGeometryNodes < this->passes.size())
-			numGeometryNodes *= 2;
-		this->buildWorkspace(numGeometryNodes);
-	}
-	this->workspaceDef->clearAllInterNodeConnections();
-
-
-	std::size_t totalRenderObjects = 0;
-	for(auto& pass : passes)
-		totalRenderObjects += pass.queue.size();
-
-	this->sceneNodes.reserve(totalRenderObjects);
-	this->renderObjects.reserve(totalRenderObjects);
-
-
-	// Connect required nodes in workspace, which creates passes
-	auto geometryNode = this->geometryNodes.begin();
-	Ogre::IdString lastNode = "Rml/Start";
-	std::vector<Ogre::CompositorNode*> activeNodes;
-	activeNodes.reserve(this->passes.size());
-	for(std::size_t i = 0; i < this->passes.size(); ++i)
-	{
-		auto& node = *geometryNode++;
-		node->setEnabled(true);
-
-		auto nodeName = node->getName();
-		activeNodes.push_back(node);
-		// Ogre bug stops this working
-		// this->workspaceDef->connect(lastNode, nodeName);
-		// Workaround is using overload that specifies node channels
-		this->workspaceDef->connect(lastNode, 0, nodeName, 0);
-		this->workspaceDef->connect(lastNode, 1, nodeName, 1);
-		lastNode = nodeName;
-	}
-	for(; geometryNode != this->geometryNodes.end(); ++geometryNode)
-		(*geometryNode)->setEnabled(false);
-
-	this->workspaceDef->connect(lastNode, 0, "Rml/End", 0);
-	this->workspace->reconnectAllNodes();
-
-
-	// Fill in passes with data
-	auto nodeIter = activeNodes.begin();
-	for(auto& pass : this->passes)
-	{
-		auto* node = *nodeIter++;
-		auto& passes = node->_getPasses();
-		if(passes.empty())
-			continue;
-		auto* nodePass = static_cast<CompositorPassGeometry*>(passes.at(0));
-		for(auto& queueObject : pass.queue)
-		{
-			this->renderObjects.emplace_back(
-				Ogre::Id::generateNewId<Ogre::MovableObject>(),
-				&this->objectMemoryManager,
-				nullptr,
-				RenderObject::RENDER_QUEUE_ID
-			);
-			auto& object = this->renderObjects.back();
-			object.setVao(queueObject.vao);
-			object.setDatablock(queueObject.datablock);
-
-			this->sceneNodes.emplace_back(
-				Ogre::Id::generateNewId<Ogre::Node>(),
-				nullptr,
-				&this->nodeMemoryManager,
-				nullptr);
-			auto& sceneNode = this->sceneNodes.back();
-			sceneNode.setPosition(Ogre::Vector3{queueObject.translation.x, queueObject.translation.y, 0.0f});
-			sceneNode.attachObject(&object);
-
-			for(auto renderable : object.mRenderables)
-			{
-				nodePass->renderQueue->addRenderableV2(
-					0,
-					RenderObject::RENDER_QUEUE_ID,
-					false,
-					renderable,
-					&object);
-			}
-		}
-
-		if(pass.settings.enableScissor)
-		{
-			float width = this->output->getWidth();
-			float height = this->output->getHeight();
-			nodePass->scissorRegion = Ogre::Vector4{
-				pass.settings.scissorRegion.Left() / width,
-				pass.settings.scissorRegion.Top() / height,
-				pass.settings.scissorRegion.Width() / width,
-				pass.settings.scissorRegion.Height() / height
-			};
-		}
-		else
-			nodePass->scissorRegion = Ogre::Vector4{0.0f, 0.0f, 1.0f, 1.0f};
-	}
-
-
-	if(!this->sceneNodes.empty())
-	{
-		Ogre::Transform t;
-		std::size_t numNodes = this->nodeMemoryManager.getFirstNode(t, 0);
-		Ogre::Node::updateAllTransforms(numNodes, t);
-	}
 }
 
 void RenderInterface::releaseBufferedGeometries()
@@ -289,27 +104,16 @@ void RenderInterface::releaseBufferedTextures()
 
 void RenderInterface::BeginFrame()
 {
-	this->clearWorkspace();
+	this->workspace.clearAll();
 	this->releaseBufferedGeometries();
 	this->releaseBufferedTextures();
 }
 
 void RenderInterface::EndFrame()
 {
-	float scaleX = 2.0f / this->output->getWidth();
-	float scaleY = -2.0f / this->output->getHeight();
-	this->camera->setCustomProjectionMatrix(true, Ogre::Matrix4
-	{
-		scaleX, 0.0,    0.0, -1.0,
-		0.0,    scaleY, 0.0, 1.0,
-		0.0,    0.0,    1.0, 0.0,
-		0.0,    0.0,    0.0, 1.0
-	});
-
-	this->populateWorkspace();
+	this->workspace.populateWorkspace(this->passes);
 
 	this->passes.clear();
-	this->passes.push_back({});
 }
 
 
@@ -324,7 +128,18 @@ void RenderInterface::RenderGeometry(
 	Rml::Vector2f translation,
 	Rml::TextureHandle texture)
 {
-	this->passes.back().queue.push_back({
+	RenderPass* lastPass = nullptr;
+	if(!this->passes.empty())
+		lastPass = std::get_if<RenderPass>(&this->passes.back());
+	if(!lastPass || lastPass->settings != this->renderPassSettings)
+	{
+		RenderPass newPass;
+		newPass.settings = this->renderPassSettings;
+		this->passes.push_back(std::move(newPass));
+		lastPass = &std::get<RenderPass>(this->passes.back());
+	}
+
+	lastPass->queue.push_back({
 		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 		translation,
 		texture ? reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture) : this->noTextureDatablock
@@ -361,7 +176,7 @@ Rml::TextureHandle RenderInterface::LoadTexture(
 	texture->waitForMetadata();
 	texture_dimensions = Rml::Vector2i(texture->getWidth(), texture->getHeight());
 
-	Ogre::String id = this->workspaceDef->getNameStr();
+	Ogre::String id = this->workspace.getNameStr();
 	id.append("_Texture_");
 	id.append(std::to_string(this->datablockId++));
 	auto* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
@@ -375,7 +190,7 @@ Rml::TextureHandle RenderInterface::GenerateTexture(
 	Rml::Span<const Rml::byte> source,
 	Rml::Vector2i source_dimensions)
 {
-	Ogre::String id = this->workspaceDef->getNameStr();
+	Ogre::String id = this->workspace.getNameStr();
 	id.append("_Texture_");
 	id.append(std::to_string(this->datablockId++));
 
@@ -429,27 +244,9 @@ void RenderInterface::ReleaseTexture(Rml::TextureHandle texture)
 
 void RenderInterface::EnableScissorRegion(bool enable)
 {
-	auto& lastPass = this->passes.back();
-	if(lastPass.queue.empty())
-		lastPass.settings.enableScissor = enable;
-	else
-	{
-		Pass newPass;
-		newPass.settings = lastPass.settings;
-		newPass.settings.enableScissor = enable;
-		this->passes.push_back(std::move(newPass));
-	}
+	this->renderPassSettings.enableScissor = enable;
 }
 void RenderInterface::SetScissorRegion(Rml::Rectanglei region)
 {
-	auto& lastPass = this->passes.back();
-	if(lastPass.queue.empty())
-		lastPass.settings.scissorRegion = region;
-	else
-	{
-		Pass newPass;
-		newPass.settings = lastPass.settings;
-		newPass.settings.scissorRegion = region;
-		this->passes.push_back(std::move(newPass));
-	}
+	this->renderPassSettings.scissorRegion = region;
 }
