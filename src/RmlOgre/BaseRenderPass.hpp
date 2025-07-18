@@ -34,12 +34,16 @@ struct RenderPassSettings
 	bool enableScissor = false;
 	Rml::Rectanglei scissorRegion;
 	Ogre::Matrix4 transform = Ogre::Matrix4::IDENTITY;
+	bool enableStencil = false;
+	Ogre::uint32 stencilRefValue = 0;
 
 	bool operator==(const RenderPassSettings& b) const
 	{
 		return this->enableScissor == b.enableScissor
 			&& this->scissorRegion == b.scissorRegion
-			&& this->transform == b.transform;
+			&& this->transform == b.transform
+			&& this->enableStencil == b.enableStencil
+			&& this->stencilRefValue == b.stencilRefValue;
 	}
 	bool operator!=(const RenderPassSettings& b) const
 	{

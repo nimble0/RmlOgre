@@ -38,9 +38,85 @@ struct RenderPass : BaseRenderPass
 	}
 };
 
+struct RenderWithStencilPass : BaseRenderPass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/RenderWithStencil";
+
+	static void clearNode(Ogre::CompositorNode* node)
+	{
+		RenderPass::clearNodePass(node, 1);
+	}
+
+	void writePass(
+		Workspace& workspace,
+		Ogre::CompositorNode* node
+	) const override
+	{
+		this->writeRenderPass(workspace, node, 1);
+	}
+};
+
+struct RenderToStencilSetPass : BaseRenderPass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/RenderToStencilSet";
+
+	static void clearNode(Ogre::CompositorNode* node)
+	{
+		RenderPass::clearNodePass(node, 2);
+	}
+
+	void writePass(
+		Workspace& workspace,
+		Ogre::CompositorNode* node
+	) const override
+	{
+		this->writeRenderPass(workspace, node, 2);
+	}
+};
+
+struct RenderToStencilSetInversePass : BaseRenderPass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/RenderToStencilSetInverse";
+
+	static void clearNode(Ogre::CompositorNode* node)
+	{
+		RenderPass::clearNodePass(node, 2);
+	}
+
+	void writePass(
+		Workspace& workspace,
+		Ogre::CompositorNode* node
+	) const override
+	{
+		this->writeRenderPass(workspace, node, 2);
+	}
+};
+
+struct RenderToStencilIntersectPass : BaseRenderPass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/RenderToStencilIntersect";
+
+	static void clearNode(Ogre::CompositorNode* node)
+	{
+		RenderPass::clearNodePass(node, 1);
+	}
+
+	void writePass(
+		Workspace& workspace,
+		Ogre::CompositorNode* node
+	) const override
+	{
+		this->writeRenderPass(workspace, node, 1);
+	}
+};
+
 using Pass = std::variant<
 	NullPass,
-	RenderPass
+	RenderPass,
+	RenderWithStencilPass,
+	RenderToStencilSetPass,
+	RenderToStencilSetInversePass,
+	RenderToStencilIntersectPass
 >;
 
 }

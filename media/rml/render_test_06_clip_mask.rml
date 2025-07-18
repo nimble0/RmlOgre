@@ -1,0 +1,54 @@
+<rml>
+	<head>
+		<style>
+			body
+			{
+				width: 100%;
+				height: 100%;
+				padding: 100px;
+				background-color: #005;
+			}
+			.outer
+			{
+				position: relative;
+				display: inline-block;
+				width: 200px;
+				height: 200px;
+				margin: 50px;
+				clip: always;
+				background-color: #500;
+				transform: rotateZ(20deg);
+			}
+			.mid
+			{
+				position: relative;
+				display: block;
+				width: 200px;
+				height: 200px;
+				clip: always;
+				background-color: #050;
+				transform: rotateZ(45deg);
+			}
+			.inner
+			{
+				position: relative;
+				left: -100px;
+				top: -100px;
+				display: block;
+				width: 400px;
+				height: 400px;
+				background-color: #222;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="outer">
+			<div class="inner" />
+		</div>
+		<div class="outer">
+			<div class="mid">
+				<div class="inner" />
+			</div>
+		</div>
+	</body>
+</rml>

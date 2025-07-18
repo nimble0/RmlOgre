@@ -300,7 +300,7 @@ void Workspace::populateWorkspace(const Passes& passes)
 		(*nodeType)->setEnabled(true);
 		auto nodeName = (*nodeType)->getName();
 
-		connect_nodes(*this->workspaceDef, 2, lastActiveNode, nodeName);
+		connect_nodes(*this->workspaceDef, 3, lastActiveNode, nodeName);
 		lastActiveNode = nodeName;
 
 		activeNodes.push_back(*nodeType);

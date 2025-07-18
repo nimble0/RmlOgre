@@ -3,10 +3,6 @@
 
 #include <Compositor/Pass/OgreCompositorPassDef.h>
 
-#include <OgreRenderQueue.h>
-
-#include <memory>
-
 
 namespace nimble::RmlOgre {
 

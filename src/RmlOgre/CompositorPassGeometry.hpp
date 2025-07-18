@@ -1,9 +1,9 @@
 #ifndef NIMBLE_RMLOGRE_COMPOSITORPASSGEOMETRY_HPP
 #define NIMBLE_RMLOGRE_COMPOSITORPASSGEOMETRY_HPP
 
-#include <OgrePrerequisites.h>
-#include <OgreMatrix4.h>
 #include <Compositor/Pass/OgreCompositorPass.h>
+#include <OgreMatrix4.h>
+#include <OgrePrerequisites.h>
 
 #include <memory>
 
@@ -20,6 +20,8 @@ protected:
 public:
 	Ogre::Vector4 scissorRegion = Ogre::Vector4(0.0f, 0.0f, 1.0f, 1.0f);
 	Ogre::Matrix4 projectionMatrix = Ogre::Matrix4::IDENTITY;
+	Ogre::uint32  stencilRefValue = 0;
+
 	std::unique_ptr<Ogre::RenderQueue> renderQueue;
 
 	CompositorPassGeometry(

@@ -128,18 +128,13 @@ void RenderInterface::RenderGeometry(
 	Rml::Vector2f translation,
 	Rml::TextureHandle texture)
 {
-	RenderPass* lastPass = nullptr;
-	if(!this->passes.empty())
-		lastPass = std::get_if<RenderPass>(&this->passes.back());
-	if(!lastPass || lastPass->settings != this->renderPassSettings)
-	{
-		RenderPass newPass;
-		newPass.settings = this->renderPassSettings;
-		this->passes.push_back(std::move(newPass));
-		lastPass = &std::get<RenderPass>(this->passes.back());
-	}
+	std::vector<QueuedGeometry>* queue = nullptr;
+	if(this->renderPassSettings.enableStencil)
+		queue = &this->getRenderPass<RenderWithStencilPass>().queue;
+	else
+		queue = &this->getRenderPass<RenderPass>().queue;
 
-	lastPass->queue.push_back({
+	queue->push_back({
 		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 		translation,
 		texture ? reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture) : this->noTextureDatablock
@@ -256,4 +251,62 @@ void RenderInterface::SetTransform(const Rml::Matrix4f* transform)
 	this->renderPassSettings.transform = transform
 		? Ogre::Matrix4(transform->data()).transpose()
 		: Ogre::Matrix4::IDENTITY;
+}
+
+void RenderInterface::EnableClipMask(bool enable)
+{
+	this->renderPassSettings.enableStencil = enable;
+}
+void RenderInterface::RenderToClipMask(
+	Rml::ClipMaskOperation operation,
+	Rml::CompiledGeometryHandle geometry,
+	Rml::Vector2f translation)
+{
+	switch(operation)
+	{
+	case Rml::ClipMaskOperation::Set:
+		this->renderPassSettings.stencilRefValue = 1;
+		break;
+	case Rml::ClipMaskOperation::SetInverse:
+		this->renderPassSettings.stencilRefValue = 0;
+		break;
+	case Rml::ClipMaskOperation::Intersect:
+		break;
+	}
+
+	switch(operation)
+	{
+	case Rml::ClipMaskOperation::Set:
+		this->getRenderPass<RenderToStencilSetPass>().queue.push_back({
+			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
+			translation,
+			this->noTextureDatablock
+		});
+		break;
+	case Rml::ClipMaskOperation::SetInverse:
+		this->getRenderPass<RenderToStencilSetInversePass>().queue.push_back({
+			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
+			translation,
+			this->noTextureDatablock
+		});
+		break;
+	case Rml::ClipMaskOperation::Intersect:
+		this->getRenderPass<RenderToStencilIntersectPass>().queue.push_back({
+			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
+			translation,
+			this->noTextureDatablock
+		});
+		break;
+	}
+
+	switch(operation)
+	{
+	case Rml::ClipMaskOperation::Set:
+	case Rml::ClipMaskOperation::SetInverse:
+		this->renderPassSettings.stencilRefValue = 1;
+		break;
+	case Rml::ClipMaskOperation::Intersect:
+		++this->renderPassSettings.stencilRefValue;
+		break;
+	}
 }

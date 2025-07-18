@@ -141,6 +141,7 @@ void CompositorPassGeometry::execute(const Ogre::Camera* lodCamera)
 
 	Ogre::RenderSystem* renderSystem = sceneManager->getDestinationRenderSystem();
 
+	renderSystem->setStencilBufferParams(this->stencilRefValue, renderSystem->getStencilBufferParams());
 	this->renderQueue->renderPassPrepare(false, false);
 	renderSystem->executeRenderPassDescriptorDelayedActions();
 	this->renderQueue->render(

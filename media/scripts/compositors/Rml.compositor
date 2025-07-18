@@ -4,6 +4,7 @@ compositor_node Rml/Start
 
 	texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto
 	texture rt1 target_width target_height PFG_RGBA16_FLOAT msaa_auto
+	texture rtd target_width target_height PFG_D32_FLOAT_S8X24_UINT msaa_auto
 
 	target rt0
 	{
@@ -16,6 +17,7 @@ compositor_node Rml/Start
 
 	out 0 rt0
 	out 1 rt1
+	out 2 rtd
 }
 
 compositor_node Rml/End
@@ -37,6 +39,7 @@ compositor_node Rml/Render
 {
 	in 0 rt0
 	in 1 rt1
+	in 2 rtd
 
 	target rt0
 	{
@@ -45,4 +48,180 @@ compositor_node Rml/Render
 
 	out 0 rt0
 	out 1 rt1
+	out 2 rtd
+}
+
+compositor_node Rml/RenderWithStencil
+{
+	in 0 rt0
+	in 1 rt1
+	in 2 rtd
+
+	rtv rtt
+	{
+		colour        rt0
+		depth_stencil rtd
+	}
+
+	target rtt
+	{
+		pass stencil
+		{
+			check true
+
+			mask      0xff
+			read_mask 0xff
+
+			ref_value 1
+
+			both
+			{
+				pass_op       keep
+				depth_fail_op keep
+				fail_op       keep
+
+				comp_func     equal
+			}
+		}
+
+		pass custom rml/geometry {}
+
+		pass stencil
+		{
+			check false
+		}
+	}
+
+	out 0 rt0
+	out 1 rt1
+	out 2 rtd
+}
+
+compositor_node Rml/RenderToStencilSet
+{
+	in 0 rt0
+	in 1 rt1
+	in 2 rtd
+
+	target rtd
+	{
+		pass clear {}
+
+		pass stencil
+		{
+			check true
+
+			mask      0xff
+			read_mask 0xff
+
+			ref_value 1
+
+			both
+			{
+				pass_op       replace
+				depth_fail_op keep
+				fail_op       keep
+
+				comp_func     always_pass
+			}
+		}
+
+		pass custom rml/geometry {}
+
+		pass stencil
+		{
+			check false
+		}
+	}
+
+	out 0 rt0
+	out 1 rt1
+	out 2 rtd
+}
+
+compositor_node Rml/RenderToStencilSetInverse
+{
+	in 0 rt0
+	in 1 rt1
+	in 2 rtd
+
+	target rtd
+	{
+		pass clear
+		{
+			load
+			{
+				all clear
+				clear_stencil 1
+			}
+		}
+
+		pass stencil
+		{
+			check true
+
+			mask      0xff
+			read_mask 0xff
+
+			ref_value 0
+
+			both
+			{
+				pass_op       replace
+				depth_fail_op keep
+				fail_op       keep
+
+				comp_func     always_pass
+			}
+		}
+
+		pass custom rml/geometry {}
+
+		pass stencil
+		{
+			check false
+		}
+	}
+
+	out 0 rt0
+	out 1 rt1
+	out 2 rtd
+}
+
+compositor_node Rml/RenderToStencilIntersect
+{
+	in 0 rt0
+	in 1 rt1
+	in 2 rtd
+
+	target rtd
+	{
+		pass stencil
+		{
+			check true
+
+			mask      0xff
+			read_mask 0xff
+
+			both
+			{
+				pass_op       increment_wrap
+				depth_fail_op keep
+				fail_op       keep
+
+				comp_func     always_pass
+			}
+		}
+
+		pass custom rml/geometry {}
+
+		pass stencil
+		{
+			check false
+		}
+	}
+
+	out 0 rt0
+	out 1 rt1
+	out 2 rtd
 }

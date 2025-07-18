@@ -41,6 +41,23 @@ class RenderInterface : public Rml::RenderInterface
 	void releaseBufferedGeometries();
 	void releaseBufferedTextures();
 
+	template <class TRenderPass>
+	TRenderPass& getRenderPass()
+	{
+		TRenderPass* lastPass = nullptr;
+		if(!this->passes.empty())
+			lastPass = std::get_if<TRenderPass>(&this->passes.back());
+		if(!lastPass || lastPass->settings != this->renderPassSettings)
+		{
+			TRenderPass newPass;
+			newPass.settings = this->renderPassSettings;
+			this->passes.push_back(std::move(newPass));
+			lastPass = &std::get<TRenderPass>(this->passes.back());
+		}
+
+		return *lastPass;
+	}
+
 public:
 	RenderInterface(
 		const Ogre::String& name,
@@ -76,6 +93,13 @@ public:
 	void SetScissorRegion(Rml::Rectanglei region) override;
 
 	void SetTransform(const Rml::Matrix4f* transform) override;
+
+	void EnableClipMask(bool enable) override;
+	void RenderToClipMask(
+		Rml::ClipMaskOperation operation,
+		Rml::CompiledGeometryHandle geometry,
+		Rml::Vector2f translation
+	) override;
 };
 
 }
