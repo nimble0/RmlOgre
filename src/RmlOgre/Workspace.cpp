@@ -1,5 +1,7 @@
 #include "Workspace.hpp"
 
+#include "Compositor/CompositorPassRenderQuadDef.hpp"
+
 #include <Compositor/OgreCompositorManager2.h>
 #include <Compositor/OgreCompositorNode.h>
 #include <Compositor/OgreCompositorWorkspace.h>
@@ -135,6 +137,17 @@ Workspace::Workspace(
 		// Can't disable nodes in scripts
 		compositorManager->getNodeDefinitionNonConst(nodeType.baseName)->setStartEnabled(false);
 	}
+
+	static_cast<CompositorPassRenderQuadDef*>(compositorManager
+		->getNodeDefinitionNonConst("Rml/Composite")
+		->getTargetPass(0)
+		->getCompositorPassesNonConst()[0])
+		->mMaterialName = "Rml/AlphaBlend";
+	static_cast<CompositorPassRenderQuadDef*>(compositorManager
+		->getNodeDefinitionNonConst("Rml/CompositeWithStencil")
+		->getTargetPass(0)
+		->getCompositorPassesNonConst()[1])
+		->mMaterialName = "Rml/AlphaBlend";
 
 	this->buildWorkspace({});
 }
@@ -284,8 +297,12 @@ void Workspace::populateWorkspace(const Passes& passes)
 	nodeTypeIters.reserve(this->nodeTypes.size());
 	for(auto& type : this->nodeTypes)
 		nodeTypeIters.push_back({type.nodes.begin(), type.nodes.end()});
+
 	std::vector<Ogre::CompositorNode*> activeNodes;
 	activeNodes.reserve(passes.size());
+
+	NodeConnectionMap extraConnections;
+
 	Ogre::IdString lastActiveNode = "Rml/Start";
 	for(auto& pass : passes)
 	{
@@ -301,14 +318,28 @@ void Workspace::populateWorkspace(const Passes& passes)
 		auto nodeName = (*nodeType)->getName();
 
 		connect_nodes(*this->workspaceDef, 3, lastActiveNode, nodeName);
-		lastActiveNode = nodeName;
+		extraConnections.setCurrentNode(nodeName);
+		std::visit([&](auto& pass)
+		{
+			pass.addExtraConnections(extraConnections);
+		}, pass);
+		extraConnections.setCurrentNode(Ogre::IdString{});
 
 		activeNodes.push_back(*nodeType);
+		lastActiveNode = nodeName;
 	}
 	// Disable unused nodes
 	for(auto& iters : nodeTypeIters)
 		for(auto iter = iters.first; iter != iters.second; ++iter)
 			(*iter)->setEnabled(false);
+
+	for(auto& connection : extraConnections)
+		if(connection.inChannel != -1)
+			this->workspaceDef->connect(
+				connection.outNode,
+				connection.outChannel,
+				connection.inNode,
+				connection.inChannel);
 
 	this->workspaceDef->connect(lastActiveNode, 0, "Rml/End", 0);
 	this->workspace->reconnectAllNodes();

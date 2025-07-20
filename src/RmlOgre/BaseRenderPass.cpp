@@ -1,7 +1,7 @@
 #include "BaseRenderPass.hpp"
 
-#include "CompositorPassGeometry.hpp"
-#include "CompositorPassGeometryDef.hpp"
+#include "Compositor/CompositorPassGeometry.hpp"
+#include "Compositor/CompositorPassGeometryDef.hpp"
 #include "RenderObject.hpp"
 #include "Workspace.hpp"
 #include "geometry.hpp"

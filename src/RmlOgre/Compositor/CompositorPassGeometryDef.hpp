@@ -1,5 +1,5 @@
-#ifndef NIMBLE_RMLOGRE_COMPOSITORPASSGEOMETRYDEF_HPP
-#define NIMBLE_RMLOGRE_COMPOSITORPASSGEOMETRYDEF_HPP
+#ifndef NIMBLE_RMLOGRE_COMPOSITOR_COMPOSITORPASSGEOMETRYDEF_HPP
+#define NIMBLE_RMLOGRE_COMPOSITOR_COMPOSITORPASSGEOMETRYDEF_HPP
 
 #include <Compositor/Pass/OgreCompositorPassDef.h>
 
@@ -12,10 +12,10 @@ public:
 	CompositorPassGeometryDef(Ogre::CompositorTargetDef* parentTargetDef) :
 		Ogre::CompositorPassDef(Ogre::PASS_CUSTOM, parentTargetDef)
 	{
-		mProfilingId = "RmlOgre Rendering";
+		mProfilingId = "rml/geometry";
 	}
 };
 
 }
 
-#endif // NIMBLE_RMLOGRE_COMPOSITORPASSGEOMETRYDEF_HPP
+#endif // NIMBLE_RMLOGRE_COMPOSITOR_COMPOSITORPASSGEOMETRYDEF_HPP

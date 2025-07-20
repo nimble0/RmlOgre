@@ -1,7 +1,7 @@
 #include "RenderInterface.hpp"
 
-#include "CompositorPassGeometry.hpp"
-#include "CompositorPassGeometryDef.hpp"
+#include "Compositor/CompositorPassGeometry.hpp"
+#include "Compositor/CompositorPassGeometryDef.hpp"
 #include "geometry.hpp"
 
 #include <Compositor/OgreCompositorManager2.h>
@@ -114,6 +114,9 @@ void RenderInterface::EndFrame()
 	this->workspace.populateWorkspace(this->passes);
 
 	this->passes.clear();
+	this->layerBuffers.clear();
+	this->renderPassSettings = RenderPassSettings{};
+	this->connectionId = 0;
 }
 
 
@@ -144,6 +147,7 @@ void RenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry)
 {
 	this->releaseGeometries.push_back(geometry);
 }
+
 
 Rml::TextureHandle RenderInterface::LoadTexture(
 	Rml::Vector2i& texture_dimensions,
@@ -237,6 +241,7 @@ void RenderInterface::ReleaseTexture(Rml::TextureHandle texture)
 	this->releaseTextures.push_back(texture);
 }
 
+
 void RenderInterface::EnableScissorRegion(bool enable)
 {
 	this->renderPassSettings.enableScissor = enable;
@@ -246,12 +251,14 @@ void RenderInterface::SetScissorRegion(Rml::Rectanglei region)
 	this->renderPassSettings.scissorRegion = region;
 }
 
+
 void RenderInterface::SetTransform(const Rml::Matrix4f* transform)
 {
 	this->renderPassSettings.transform = transform
 		? Ogre::Matrix4(transform->data()).transpose()
 		: Ogre::Matrix4::IDENTITY;
 }
+
 
 void RenderInterface::EnableClipMask(bool enable)
 {
@@ -309,4 +316,78 @@ void RenderInterface::RenderToClipMask(
 		++this->renderPassSettings.stencilRefValue;
 		break;
 	}
+}
+
+
+Rml::LayerHandle RenderInterface::PushLayer()
+{
+	int oldTopLayer = this->addConnection();
+	this->layerBuffers.push_back(oldTopLayer);
+	this->passes.push_back({StartLayerPass(oldTopLayer)});
+	return Rml::LayerHandle{this->layerBuffers.size()};
+}
+void RenderInterface::CompositeLayers(
+	Rml::LayerHandle source,
+	Rml::LayerHandle destination,
+	Rml::BlendMode blend_mode,
+	Rml::Span<const Rml::CompiledFilterHandle> filters)
+{
+	int topLayer = this->addConnection();
+	int sourceLayer = -1;
+	int destinationLayer = -1;
+
+	bool sourceIsTopLayer = source == this->layerBuffers.size();
+	bool destinationIsTopLayer = destination == this->layerBuffers.size();
+
+	if(!sourceIsTopLayer)
+	{
+		this->passes.push_back(SwapPass(this->layerBuffers.at(source), topLayer));
+		sourceLayer = this->addConnection();
+		this->passes.push_back(CopyPass(sourceLayer));
+	}
+	else
+		this->passes.push_back(CopyPass(topLayer));
+
+	if(destinationIsTopLayer)
+	{
+		destinationLayer = topLayer;
+		topLayer = -1;
+	}
+	else if(source == destination)
+	{
+		destinationLayer = sourceLayer;
+		sourceLayer = -1;
+	}
+	else
+		destinationLayer = this->layerBuffers.at(destination);
+
+	if(sourceLayer != -1)
+		this->layerBuffers.at(source) = sourceLayer;
+
+
+	// Apply filters
+
+
+	if(this->renderPassSettings.enableStencil)
+		this->passes.push_back(CompositeWithStencilPass(
+			destinationLayer,
+			blend_mode == Rml::BlendMode::Replace,
+			this->renderPassSettings));
+	else
+		this->passes.push_back(CompositePass(
+			destinationLayer,
+			blend_mode == Rml::BlendMode::Replace,
+			this->renderPassSettings));
+
+	if(!destinationIsTopLayer)
+	{
+		destinationLayer = this->addConnection();
+		this->passes.push_back(SwapPass(topLayer, destinationLayer));
+		this->layerBuffers.at(destination) = destinationLayer;
+	}
+}
+void RenderInterface::PopLayer()
+{
+	this->passes.push_back({SwapPass(this->layerBuffers.back())});
+	this->layerBuffers.pop_back();
 }

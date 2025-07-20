@@ -110,13 +110,138 @@ struct RenderToStencilIntersectPass : BaseRenderPass
 	}
 };
 
+struct StartLayerPass : BasePass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/StartLayer";
+
+	int moveOut = -1;
+
+	StartLayerPass(int moveOut) :
+		moveOut{moveOut}
+	{}
+
+	void addExtraConnections(NodeConnectionMap& connections) const override
+	{
+		assert(this->moveOut >= 0);
+		connections.setOut(this->moveOut, 3);
+	}
+};
+
+struct SwapPass : BasePass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/Swap";
+
+	int swapIn = -1;
+	int swapOut = -1;
+
+	SwapPass(int swapIn, int swapOut = -1) :
+		swapIn{swapIn},
+		swapOut{swapOut}
+	{}
+
+	void addExtraConnections(NodeConnectionMap& connections) const override
+	{
+		assert(this->swapIn >= 0);
+		connections.setIn(this->swapIn, 3);
+		connections.setOut(this->swapOut, 3);
+	}
+};
+
+struct CopyPass : BasePass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/Copy";
+
+	int copyOut = -1;
+
+	CopyPass(int copyOut) :
+		copyOut{copyOut}
+	{}
+
+	void addExtraConnections(NodeConnectionMap& connections) const override
+	{
+		assert(this->copyOut >= 0);
+		connections.setOut(this->copyOut, 3);
+	}
+};
+
+struct RenderQuadPass : BasePass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/RenderQuad";
+
+	Ogre::MaterialPtr material;
+
+	bool enableScissor = false;
+	Rml::Rectanglei scissorRegion;
+
+	RenderQuadPass(
+		Ogre::MaterialPtr material,
+		const RenderPassSettings& renderPassSettings = RenderPassSettings{}
+	) :
+		material{material},
+		enableScissor{renderPassSettings.enableScissor},
+		scissorRegion{renderPassSettings.scissorRegion}
+	{}
+
+	void writePass(
+		Workspace& workspace,
+		Ogre::CompositorNode* node,
+		int passIndex
+	) const;
+
+	void writePass(
+		Workspace& workspace,
+		Ogre::CompositorNode* node
+	) const override
+	{
+		this->writePass(workspace, node, 0);
+	}
+};
+
+struct CompositePass : RenderQuadPass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/Composite";
+
+	int dst = -1;
+
+	CompositePass(
+		int dst,
+		bool noBlending,
+		const RenderPassSettings& renderPassSettings);
+
+	void addExtraConnections(NodeConnectionMap& connections) const override
+	{
+		assert(this->dst >= 0);
+		connections.setIn(this->dst, 3);
+	}
+};
+
+struct CompositeWithStencilPass : CompositePass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/CompositeWithStencil";
+
+	using CompositePass::CompositePass;
+
+	void writePass(
+		Workspace& workspace,
+		Ogre::CompositorNode* node
+	) const override
+	{
+		RenderQuadPass::writePass(workspace, node, 1);
+	}
+};
+
 using Pass = std::variant<
 	NullPass,
 	RenderPass,
 	RenderWithStencilPass,
 	RenderToStencilSetPass,
 	RenderToStencilSetInversePass,
-	RenderToStencilIntersectPass
+	RenderToStencilIntersectPass,
+	StartLayerPass,
+	SwapPass,
+	CopyPass,
+	CompositePass,
+	CompositeWithStencilPass
 >;
 
 }

@@ -16,8 +16,10 @@
 #include <OgreWindowEventUtilities.h>
 
 #include <RmlUi/Core.h>
-#include <RmlOgre/CompositorPassGeometry.hpp>
-#include <RmlOgre/CompositorPassGeometryDef.hpp>
+#include <RmlOgre/Compositor/CompositorPassGeometry.hpp>
+#include <RmlOgre/Compositor/CompositorPassGeometryDef.hpp>
+#include <RmlOgre/Compositor/CompositorPassRenderQuad.hpp>
+#include <RmlOgre/Compositor/CompositorPassRenderQuadDef.hpp>
 #include <RmlOgre/RenderInterface.hpp>
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE
@@ -143,6 +145,8 @@ struct MyCompositorPassProvider : public Ogre::CompositorPassProvider
 	{
 		if(customId == "rml/geometry")
 			return OGRE_NEW nimble::RmlOgre::CompositorPassGeometryDef(parentTargetDef);
+		else if(customId == "rml/render_quad")
+			return OGRE_NEW nimble::RmlOgre::CompositorPassRenderQuadDef(parentNodeDef, parentTargetDef);
 		else
 			return nullptr;
 	}
@@ -161,6 +165,12 @@ struct MyCompositorPassProvider : public Ogre::CompositorPassProvider
 				defaultCamera,
 				rtvDef,
 				parentNode);
+		else if(auto* d = dynamic_cast<const nimble::RmlOgre::CompositorPassRenderQuadDef*>(definition))
+			return OGRE_NEW nimble::RmlOgre::CompositorPassRenderQuad(
+				d,
+				defaultCamera,
+				parentNode,
+				rtvDef);
 
 		OGRE_EXCEPT(Ogre::Exception::ERR_NOT_IMPLEMENTED, "", "");
 	}

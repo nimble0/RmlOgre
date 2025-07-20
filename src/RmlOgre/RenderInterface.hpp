@@ -30,6 +30,8 @@ class RenderInterface : public Rml::RenderInterface
 	Ogre::HlmsUnlitDatablock* noTextureDatablock;
 
 	RenderPassSettings renderPassSettings;
+	int connectionId = 0;
+	std::vector<int> layerBuffers;
 	Passes passes;
 
 	int datablockId = 0;
@@ -64,6 +66,10 @@ public:
 		Ogre::SceneManager* sceneManager,
 		Ogre::TextureGpu* output,
 		Ogre::TextureGpu* background);
+
+
+	int addConnection() { return this->connectionId++; }
+
 
 	void BeginFrame();
 	void EndFrame();
@@ -100,6 +106,15 @@ public:
 		Rml::CompiledGeometryHandle geometry,
 		Rml::Vector2f translation
 	) override;
+
+	Rml::LayerHandle PushLayer() override;
+	void CompositeLayers(
+		Rml::LayerHandle source,
+		Rml::LayerHandle destination,
+		Rml::BlendMode blend_mode,
+		Rml::Span<const Rml::CompiledFilterHandle> filters
+	) override;
+	void PopLayer() override;
 };
 
 }
