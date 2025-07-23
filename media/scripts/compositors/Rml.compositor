@@ -1,4 +1,4 @@
-compositor_node Start
+compositor_node Rml/Start
 {
 	texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto
 	texture rt1 target_width target_height PFG_RGBA16_FLOAT msaa_auto
@@ -23,7 +23,7 @@ compositor_node Start
 	out 1 rt1
 }
 
-compositor_node End
+compositor_node Rml/End
 {
 	in 0 rt0
 	in 1 rt1
@@ -38,14 +38,14 @@ compositor_node End
 	}
 }
 
-compositor_node UiRender
+compositor_node Rml/Render
 {
 	in 0 rt0
 	in 1 rt1
 
 	target rt0
 	{
-		pass custom rml_geometry {}
+		pass custom rml/geometry {}
 	}
 
 	out 0 rt0

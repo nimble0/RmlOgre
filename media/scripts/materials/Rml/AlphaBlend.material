@@ -1,8 +1,8 @@
 //-----------------------------------------------------------------------------
 // GLSL shaders
-fragment_program AlphaBlend_ps_GLSL glsl
+fragment_program Rml/AlphaBlend_ps_GLSL glsl
 {
-	source AlphaBlend_ps.glsl
+	source GLSL/AlphaBlend_ps.glsl
 	default_params
 	{
 		param_named dstTex int 0
@@ -10,29 +10,29 @@ fragment_program AlphaBlend_ps_GLSL glsl
 	}
 }
 
-fragment_program AlphaBlend_ps_VK glslvk
+fragment_program Rml/AlphaBlend_ps_VK glslvk
 {
-	source AlphaBlend_ps.glsl
+	source GLSL/AlphaBlend_ps.glsl
 }
 
 // HLSL shaders
-fragment_program AlphaBlend_ps_HLSL hlsl
+fragment_program Rml/AlphaBlend_ps_HLSL hlsl
 {
-	source AlphaBlend_ps.hlsl
+	source HLSL/AlphaBlend_ps.hlsl
 	entry_point main
 	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
 }
 
 
-fragment_program AlphaBlend_ps unified
+fragment_program Rml/AlphaBlend_ps unified
 {
-	delegate AlphaBlend_ps_HLSL
-	delegate AlphaBlend_ps_GLSL
-	delegate AlphaBlend_ps_VK
+	delegate Rml/AlphaBlend_ps_HLSL
+	delegate Rml/AlphaBlend_ps_GLSL
+	delegate Rml/AlphaBlend_ps_VK
 }
 
 // Material definition
-material AlphaBlend
+material Rml/AlphaBlend
 {
 	technique
 	{
@@ -47,7 +47,7 @@ material AlphaBlend
 			{
 			}
 
-			fragment_program_ref AlphaBlend_ps
+			fragment_program_ref Rml/AlphaBlend_ps
 			{
 			}
 

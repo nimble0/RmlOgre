@@ -138,7 +138,7 @@ struct MyCompositorPassProvider : public Ogre::CompositorPassProvider
 		Ogre::CompositorNodeDef* parentNodeDef
 	) override
 	{
-		if(customId == "rml_geometry")
+		if(customId == "rml/geometry")
 			return OGRE_NEW nimble::RmlOgre::CompositorPassGeometryDef(parentTargetDef);
 		else
 			return nullptr;

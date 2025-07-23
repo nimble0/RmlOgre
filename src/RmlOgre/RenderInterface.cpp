@@ -46,10 +46,10 @@ RenderInterface::RenderInterface(
 
 	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
 	this->workspaceDef = compositorManager->addWorkspaceDefinition(name);
-	this->workspaceDef->connectExternal(0, "End", 1);
+	this->workspaceDef->connectExternal(0, "Rml/End", 1);
 	// Prevent warnings
 	// Can't disable nodes in scripts
-	compositorManager->getNodeDefinitionNonConst("UiRender")->setStartEnabled(false);
+	compositorManager->getNodeDefinitionNonConst("Rml/Render")->setStartEnabled(false);
 
 	this->buildWorkspace(8);
 
@@ -85,7 +85,7 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 
 	// This is just to prevent warnings about unconnected channels,
 	// populateWorkspace will overwrite this connection
-	this->workspaceDef->connect("Start", 0, "End", 0);
+	this->workspaceDef->connect("Rml/Start", 0, "Rml/End", 0);
 
 	// Clear existing
 	for(auto& node : this->geometryNodes)
@@ -97,8 +97,8 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 	std::vector<Ogre::IdString> nodeNames;
 	for(std::size_t i = 0; i < numGeometryNodes; ++i)
 	{
-		auto name = Ogre::IdString("UiRender_") + Ogre::IdString(i);
-		this->workspaceDef->addNodeAlias(name, "UiRender");
+		auto name = Ogre::IdString("Rml/Render_") + Ogre::IdString(i);
+		this->workspaceDef->addNodeAlias(name, "Rml/Render");
 		nodeNames.push_back(name);
 	}
 
@@ -157,7 +157,7 @@ void RenderInterface::populateWorkspace()
 
 	// Connect required nodes in workspace, which creates passes
 	auto geometryNode = this->geometryNodes.begin();
-	Ogre::IdString lastNode = "Start";
+	Ogre::IdString lastNode = "Rml/Start";
 	std::vector<Ogre::CompositorNode*> activeNodes;
 	activeNodes.reserve(this->passes.size());
 	for(std::size_t i = 0; i < this->passes.size(); ++i)
@@ -177,7 +177,7 @@ void RenderInterface::populateWorkspace()
 	for(; geometryNode != this->geometryNodes.end(); ++geometryNode)
 		(*geometryNode)->setEnabled(false);
 
-	this->workspaceDef->connect(lastNode, 0, "End", 0);
+	this->workspaceDef->connect(lastNode, 0, "Rml/End", 0);
 	this->workspace->reconnectAllNodes();
 
 

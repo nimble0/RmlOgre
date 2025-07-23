@@ -30,7 +30,7 @@ compositor_node Ui
 	{
 		pass render_quad
 		{
-			material AlphaBlend
+			material Rml/AlphaBlend
 			input 0 rt0
 			input 1 ui_texture
 		}
