@@ -148,7 +148,13 @@ Workspace::Workspace(
 		->getTargetPass(0)
 		->getCompositorPassesNonConst()[1])
 		->mMaterialName = "Rml/AlphaBlend";
+	static_cast<CompositorPassRenderQuadDef*>(compositorManager
+		->getNodeDefinitionNonConst("Rml/RenderToTexture")
+		->getTargetPass(0)
+		->getCompositorPassesNonConst()[0])
+		->mMaterialName = "Rml/ScissorCopy";
 
+	this->reserveRenderTextures(4);
 	this->buildWorkspace({});
 }
 
@@ -185,9 +191,16 @@ void Workspace::buildWorkspace(const std::array<std::size_t, NUM_NODE_TYPES>& re
 		nodeTypeNames[i] = std::move(nodeNames);
 	}
 
+	Ogre::CompositorChannelVec externalTextures;
+	externalTextures.reserve(this->renderTextures.size() + 2);
+	externalTextures.push_back(this->output);
+	externalTextures.push_back(this->background);
+	for(auto& texture : this->renderTextures)
+		externalTextures.push_back(texture);
+
 	this->workspace = compositorManager->addWorkspace(
 		this->sceneManager,
-		{ this->output, this->background },
+		externalTextures,
 		this->camera,
 		this->workspaceDef->getName(),
 		true);
@@ -219,6 +232,9 @@ void Workspace::ensureWorkspaceNodes(const std::array<std::size_t, NUM_NODE_TYPE
 	for(std::size_t i = 1; i < this->nodeTypes.size(); ++i)
 		needRebuild = needRebuild || this->nodeTypes[i].nodes.size() < minNodes[i];
 
+	needRebuild = needRebuild
+		|| this->workspace->getExternalRenderTargets().size() < (this->renderTextures.size() + 2);
+
 	if(needRebuild)
 	{
 		std::array<std::size_t, NUM_NODE_TYPES> numNodes;
@@ -230,6 +246,32 @@ void Workspace::ensureWorkspaceNodes(const std::array<std::size_t, NUM_NODE_TYPE
 	}
 }
 
+void Workspace::reserveRenderTextures(std::size_t capacity)
+{
+	while(this->renderTextures.size() < capacity)
+	{
+		Ogre::String id = this->workspaceDef->getNameStr();
+		id.append("_RenderTexture_");
+		id.append(std::to_string(this->renderTextures.size()));
+		auto* texture = Ogre::Root::getSingleton()
+			.getRenderSystem()
+			->getTextureGpuManager()
+			->createTexture(
+				id,
+				Ogre::GpuPageOutStrategy::SaveToSystemRam,
+				Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::AllowAutomipmaps,
+				Ogre::TextureTypes::Type2D);
+		texture->setPixelFormat(Ogre::PixelFormatGpu::PFG_RGBA8_UNORM_SRGB);
+		texture->setResolution(1, 1);
+		texture->setNumMipmaps(8);
+		if(texture->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
+		{
+			texture->_transitionTo(Ogre::GpuResidency::Resident, nullptr);
+			texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
+		}
+		this->renderTextures.add(texture);
+	}
+}
 void Workspace::reserveRenderObjects(std::size_t capacity)
 {
 	this->renderObjects.reserve(capacity);
@@ -281,6 +323,7 @@ void Workspace::populateWorkspace(const Passes& passes)
 	this->ensureWorkspaceNodes(nodeTypeCounts);
 
 	this->workspaceDef->clearAllInterNodeConnections();
+	this->workspaceDef->clearOutputConnections();
 
 	std::size_t totalRenderObjects = 0;
 	for(auto& pass : passes)
@@ -301,7 +344,7 @@ void Workspace::populateWorkspace(const Passes& passes)
 	std::vector<Ogre::CompositorNode*> activeNodes;
 	activeNodes.reserve(passes.size());
 
-	NodeConnectionMap extraConnections;
+	NodeConnectionMap extraConnections(this->workspaceDef);
 
 	Ogre::IdString lastActiveNode = "Rml/Start";
 	for(auto& pass : passes)
@@ -342,6 +385,8 @@ void Workspace::populateWorkspace(const Passes& passes)
 				connection.inChannel);
 
 	this->workspaceDef->connect(lastActiveNode, 0, "Rml/End", 0);
+	this->workspaceDef->connectExternal(0, "Rml/End", 1);
+	this->workspaceDef->connectExternal(1, "Rml/Start", 0);
 	this->workspace->reconnectAllNodes();
 
 	// Fill in passes with data
@@ -394,4 +439,19 @@ Ogre::uint32 Workspace::width() const
 Ogre::uint32 Workspace::height() const
 {
 	return this->output->getHeight();
+}
+
+std::pair<Ogre::TextureGpu*, std::size_t> Workspace::getRenderTexture()
+{
+	if(this->renderTextures.full())
+		this->reserveRenderTextures(2 * this->renderTextures.size());
+
+	auto claimed = this->renderTextures.claim();
+	// First 2 render textures are reserved
+	// Other render textures start at 2
+	return {claimed.first, claimed.second + 2};
+}
+bool Workspace::freeRenderTexture(Ogre::TextureGpu* texture)
+{
+	return this->renderTextures.free(texture);
 }

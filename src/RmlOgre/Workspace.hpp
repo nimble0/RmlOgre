@@ -3,6 +3,7 @@
 
 #include "Pass.hpp"
 #include "RenderObject.hpp"
+#include "ResourcePool.hpp"
 
 #include <Math/Array/OgreObjectMemoryManager.h>
 #include <Math/Array/OgreNodeMemoryManager.h>
@@ -51,6 +52,13 @@ struct NodeType
 	}
 };
 
+struct RenderTexture
+{
+	Ogre::TextureGpu* texture;
+	Ogre::HlmsUnlitDatablock* datablock;
+	int index;
+};
+
 using Passes = std::vector<Pass>;
 
 class Workspace
@@ -72,12 +80,15 @@ class Workspace
 
 	Ogre::TextureGpu* output = nullptr;
 	Ogre::TextureGpu* background = nullptr;
+	ResourcePool<Ogre::TextureGpu*> renderTextures;
+
 	Ogre::CompositorWorkspace* workspace = nullptr;
 	Ogre::CompositorWorkspaceDef* workspaceDef = nullptr;
 
 	void buildWorkspace(const std::array<std::size_t, NUM_NODE_TYPES>& reservedNodes);
 	void ensureWorkspaceNodes(const std::array<std::size_t, NUM_NODE_TYPES>& minNodes);
 
+	void reserveRenderTextures(std::size_t capacity);
 	void reserveRenderObjects(std::size_t capacity);
 	void reserveSceneNodes(std::size_t capacity);
 	void updateSceneNodes();
@@ -101,6 +112,9 @@ public:
 	Ogre::uint32 width() const;
 	Ogre::uint32 height() const;
 	const Ogre::Matrix4& projectionMatrix() const { return this->projectionMatrix_; }
+
+	std::pair<Ogre::TextureGpu*, std::size_t> getRenderTexture();
+	bool freeRenderTexture(Ogre::TextureGpu* texture);
 };
 
 }

@@ -105,7 +105,14 @@ compositor_node Rml/RenderToStencilSet
 
 	target rtd
 	{
-		pass clear {}
+		pass clear
+		{
+			load
+			{
+				all clear
+				clear_stencil 0
+			}
+		}
 
 		pass stencil
 		{
@@ -205,7 +212,7 @@ compositor_node Rml/RenderToStencilIntersect
 
 			both
 			{
-				pass_op       increment_wrap
+				pass_op       increment
 				depth_fail_op keep
 				fail_op       keep
 
@@ -383,6 +390,27 @@ compositor_node Rml/ClearSecondary
 		pass clear
 		{
 			colour_value 0 0 0 0
+		}
+	}
+
+	out 0 rt0
+	out 1 rt1
+	out 2 rtd
+}
+
+compositor_node Rml/RenderToTexture
+{
+	in 0 rt0
+	in 1 rt1
+	in 2 rtd
+	in 3 copy
+
+	target copy
+	{
+		pass custom rml/render_quad
+		{
+			material Rml/ScissorCopy
+			input 0 rt0
 		}
 	}
 

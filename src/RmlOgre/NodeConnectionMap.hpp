@@ -6,6 +6,12 @@
 #include <vector>
 
 
+namespace Ogre {
+
+class CompositorWorkspaceDef;
+
+}
+
 namespace nimble::RmlOgre {
 
 struct NodeConnection
@@ -16,12 +22,17 @@ struct NodeConnection
 
 class NodeConnectionMap
 {
+	Ogre::CompositorWorkspaceDef* workspace;
 	Ogre::IdString currentNode;
 	std::vector<NodeConnection> map;
 
 public:
 	using Iterator = decltype(map)::iterator;
 	using ConstIterator = decltype(map)::const_iterator;
+
+	NodeConnectionMap(Ogre::CompositorWorkspaceDef* workspace) :
+		workspace{workspace}
+	{}
 
 	Iterator begin() { return this->map.begin(); }
 	Iterator end() { return this->map.end(); }
@@ -32,26 +43,10 @@ public:
 	{
 		this->currentNode = node;
 	}
-	void setIn(int id, int channel)
-	{
-		if(id < 0)
-			return;
+	void setIn(int id, int channel);
+	void setOut(int id, int channel);
 
-		if(static_cast<std::size_t>(id) >= this->map.size())
-			this->map.resize(id + 1);
-		this->map[id].inNode = this->currentNode;
-		this->map[id].inChannel = channel;
-	}
-	void setOut(int id, int channel)
-	{
-		if(id < 0)
-			return;
-
-		if(static_cast<std::size_t>(id) >= this->map.size())
-			this->map.resize(id + 1);
-		this->map[id].outNode = this->currentNode;
-		this->map[id].outChannel = channel;
-	}
+	void setExternal(int externalChannel, int channel);
 };
 
 }

@@ -1,0 +1,102 @@
+vertex_program Rml/ScissorQuad_vs_GLSL glsl
+{
+	source ScissorQuad_vs.glsl
+}
+
+vertex_program Rml/ScissorQuad_vs_VK glslvk
+{
+	source ScissorQuad_vs.glsl
+}
+
+vertex_program Rml/ScissorQuad_vs_GLSLES glsles
+{
+	source ScissorQuad_vs.glsles
+}
+
+vertex_program Rml/ScissorQuad_vs_HLSL hlsl
+{
+	source ScissorQuad_vs.hlsl
+	entry_point main
+	target vs_5_0 vs_4_0 vs_4_0_level_9_1 vs_4_0_level_9_3
+}
+
+vertex_program Rml/ScissorQuad_vs_Metal metal
+{
+	source ScissorQuad_vs.metal
+}
+
+// Unified definitions
+vertex_program Rml/ScissorQuad_vs unified
+{
+	delegate Rml/ScissorQuad_vs_GLSL
+	delegate Rml/ScissorQuad_vs_GLSLES
+	delegate Rml/ScissorQuad_vs_VK
+	delegate Rml/ScissorQuad_vs_HLSL
+	delegate Rml/ScissorQuad_vs_Metal
+
+	default_params
+	{
+		param_named_auto worldViewProj worldviewproj_matrix
+	}
+}
+
+fragment_program Ogre/Copy/4xFP32_ps_HLSL hlsl
+{
+	source Copyback_4xFP32_ps.hlsl
+	entry_point main
+	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+}
+
+fragment_program Ogre/Copy/4xFP32_ps_GLSL glsl
+{
+	source Copyback_4xFP32_ps.glsl
+	default_params { param_named tex int 0 }
+}
+
+fragment_program Ogre/Copy/4xFP32_ps_VK glslvk
+{
+	source Copyback_4xFP32_ps.glsl
+}
+
+fragment_program Ogre/Copy/4xFP32_ps_Metal metal
+{
+	source Copyback_4xFP32_ps.metal
+	shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+
+fragment_program Ogre/Copy/4xFP32_ps unified
+{
+	delegate Ogre/Copy/4xFP32_ps_GLSL
+	delegate Ogre/Copy/4xFP32_ps_VK
+	delegate Ogre/Copy/4xFP32_ps_HLSL
+	delegate Ogre/Copy/4xFP32_ps_Metal
+}
+
+// Copy and set vertex parameter scissorRegion (vec4) before use
+material Rml/ScissorCopy
+{
+	technique
+	{
+		pass
+		{
+			depth_check off
+			depth_write off
+
+			cull_hardware none
+
+			vertex_program_ref Rml/ScissorQuad_vs
+			{
+			}
+
+			fragment_program_ref Ogre/Copy/4xFP32_ps
+			{
+			}
+
+			texture_unit
+			{
+				filtering none
+				tex_address_mode clamp
+			}
+		}
+	}
+}

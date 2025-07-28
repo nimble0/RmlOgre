@@ -109,9 +109,14 @@ void RenderInterface::releaseBufferedTextures()
 			r->setDatablock(this->noTextureDatablock);
 
 		this->hlms->destroyDatablock(datablock->getName());
-		textureManager.destroyTexture(textureGpu);
+		if(!this->workspace.freeRenderTexture(textureGpu))
+			textureManager.destroyTexture(textureGpu);
 	}
 	this->releaseTextures.clear();
+
+	for(Ogre::TextureGpu* texture : this->releaseRenderTextures)
+		this->workspace.freeRenderTexture(texture);
+	this->releaseRenderTextures.clear();
 }
 
 
@@ -142,6 +147,10 @@ void RenderInterface::AddFilterMaker(Rml::String name, std::unique_ptr<FilterMak
 void RenderInterface::addPass(Pass&& pass)
 {
 	this->passes.push_back(std::move(pass));
+}
+void RenderInterface::releaseRenderTexture(Ogre::TextureGpu* texture)
+{
+	this->releaseRenderTextures.push_back(texture);
 }
 
 
@@ -303,6 +312,7 @@ void RenderInterface::RenderToClipMask(
 		this->renderPassSettings.stencilRefValue = 0;
 		break;
 	case Rml::ClipMaskOperation::Intersect:
+		++this->renderPassSettings.stencilRefValue;
 		break;
 	}
 
@@ -334,11 +344,11 @@ void RenderInterface::RenderToClipMask(
 	switch(operation)
 	{
 	case Rml::ClipMaskOperation::Set:
+		break;
 	case Rml::ClipMaskOperation::SetInverse:
 		this->renderPassSettings.stencilRefValue = 1;
 		break;
 	case Rml::ClipMaskOperation::Intersect:
-		++this->renderPassSettings.stencilRefValue;
 		break;
 	}
 }
@@ -436,4 +446,45 @@ void RenderInterface::ReleaseFilter(Rml::CompiledFilterHandle filter)
 	auto& compiledFilter = this->filters.at(filter);
 	compiledFilter->release(*this);
 	this->filters.erase(filter);
+}
+
+
+Rml::TextureHandle RenderInterface::SaveLayerAsTexture()
+{
+	Rml::Vector2i dimensions;
+	if(this->renderPassSettings.enableScissor)
+		dimensions = this->renderPassSettings.scissorRegion.Size();
+	else
+		dimensions = Rml::Vector2i{
+			int(this->workspace.width()),
+			int(this->workspace.height())
+		};
+
+	auto renderTexture = this->workspace.getRenderTexture();
+	Ogre::TextureGpu* texture = renderTexture.first;
+	// This looks wrong but it works?
+	// Don't want to invalidate texture pointer so don't recreate texture
+	if(texture->getResidencyStatus() == Ogre::GpuResidency::Resident)
+	{
+		texture->_transitionTo(Ogre::GpuResidency::OnStorage, nullptr);
+		texture->_setNextResidencyStatus(Ogre::GpuResidency::OnStorage);
+	}
+	texture->setResolution(dimensions.x, dimensions.y);
+	if(texture->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
+	{
+		texture->_transitionTo(Ogre::GpuResidency::Resident, nullptr);
+		texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
+	}
+
+	Ogre::String id = this->workspace.getNameStr();
+	id.append("_Texture_");
+	id.append(std::to_string(this->datablockId++));
+	auto* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+		this->hlms->createDatablock(id, id, this->macroblock, this->blendblock, Ogre::HlmsParamVec()));
+	datablock->setTexture(0, texture);
+	datablock->setUseColour(true);
+
+	this->passes.push_back(RenderToTexturePass(renderTexture.second, this->renderPassSettings));
+
+	return reinterpret_cast<Rml::TextureHandle>(datablock);
 }

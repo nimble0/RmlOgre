@@ -42,6 +42,7 @@ class RenderInterface : public Rml::RenderInterface
 	int datablockId = 0;
 	std::vector<Rml::CompiledGeometryHandle> releaseGeometries;
 	std::vector<Rml::TextureHandle> releaseTextures;
+	std::vector<Ogre::TextureGpu*> releaseRenderTextures;
 
 	Workspace workspace;
 
@@ -77,6 +78,7 @@ public:
 
 	const RenderPassSettings& currentRenderPassSettings() const { return this->renderPassSettings; }
 	void addPass(Pass&& pass);
+	void releaseRenderTexture(Ogre::TextureGpu* texture);
 
 
 	void AddFilterMaker(Rml::String name, std::unique_ptr<FilterMaker> filterMaker);
@@ -131,6 +133,8 @@ public:
 		const Rml::Dictionary& parameters
 	) override;
 	void ReleaseFilter(Rml::CompiledFilterHandle filter) override;
+
+	Rml::TextureHandle SaveLayerAsTexture() override;
 };
 
 }

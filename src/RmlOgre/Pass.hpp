@@ -235,6 +235,33 @@ struct ClearSecondaryPass : BasePass
 	static constexpr const char* BASE_NODE_NAME = "Rml/ClearSecondary";
 };
 
+struct RenderToTexturePass : RenderQuadPass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/RenderToTexture";
+
+	int renderTexture = -1;
+
+	RenderToTexturePass(
+		int renderTexture,
+		const RenderPassSettings& renderPassSettings
+	) :
+		RenderQuadPass(nullptr, renderPassSettings),
+
+		renderTexture{renderTexture}
+	{}
+
+	void addExtraConnections(NodeConnectionMap& connections) const override
+	{
+		assert(this->renderTexture >= 0);
+		connections.setExternal(this->renderTexture, 3);
+	}
+
+	void writePass(
+		Workspace& workspace,
+		Ogre::CompositorNode* node
+	) const;
+};
+
 using Pass = std::variant<
 	NullPass,
 	RenderPass,
@@ -248,7 +275,8 @@ using Pass = std::variant<
 	CompositePass,
 	CompositeWithStencilPass,
 	RenderQuadPass,
-	ClearSecondaryPass
+	ClearSecondaryPass,
+	RenderToTexturePass
 >;
 
 }
