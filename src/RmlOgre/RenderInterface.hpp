@@ -6,6 +6,7 @@
 #include <Math/Array/OgreObjectMemoryManager.h>
 #include <Math/Array/OgreNodeMemoryManager.h>
 #include <OgreHlmsDatablock.h>
+#include <OgreHlmsSamplerblock.h>
 #include <OgreMemoryStdAlloc.h>
 
 #include <RmlUi/Core/RenderInterface.h>
@@ -53,7 +54,8 @@ class RenderInterface : public Rml::RenderInterface
 {
 	Ogre::HlmsUnlit* hlms = nullptr;
 	Ogre::HlmsMacroblock macroblock;
-	Ogre::HlmsBlendblock blendBlock;
+	Ogre::HlmsBlendblock blendblock;
+	Ogre::HlmsSamplerblock samplerblock;
 	Ogre::HlmsUnlitDatablock* noTextureDatablock;
 
 	Ogre::CompositorWorkspace* workspace = nullptr;

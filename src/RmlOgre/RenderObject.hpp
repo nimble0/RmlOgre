@@ -4,19 +4,12 @@
 #include <OgreMovableObject.h>
 #include <OgreRenderable.h>
 
-#include <RmlUi/Core/RenderInterface.h>
-
 
 namespace nimble::RmlOgre {
 
 class RenderObject : public Ogre::MovableObject, public Ogre::Renderable
 {
 	static Ogre::String TYPE_NAME;
-
-	bool enableClipping_ = false;
-	Rml::Vector2i clipBottomLeft;
-	Rml::Vector2i clipTopRight;
-	Rml::Matrix4f transform_ = Rml::Matrix4f::Identity();
 
 public:
 	RenderObject(
@@ -52,23 +45,6 @@ public:
 			"nimble::RmlOgre::RenderObject doesn't support the old v1::RenderOperations.",
 			"nimble::RmlOgre::RenderObject::getRenderOperation");
 	}
-
-	void enableClipping(bool b) { this->enableClipping_ = b; }
-	bool enableClipping() const { return this->enableClipping_; }
-	void clip(
-		Rml::Vector2i clipBottomLeft,
-		Rml::Vector2i clipTopRight)
-	{
-		this->clipBottomLeft = clipBottomLeft;
-		this->clipTopRight = clipTopRight;
-	}
-	std::pair<Rml::Vector2i, Rml::Vector2i> clipping() const
-	{
-		return { this->clipBottomLeft, this->clipTopRight };
-	}
-
-	void transform(Rml::Matrix4f m) { this->transform_ = m; }
-	const Rml::Matrix4f& transform() const { return this->transform_; }
 };
 
 }

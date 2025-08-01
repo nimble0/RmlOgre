@@ -15,11 +15,11 @@
 #include <OgrePixelFormatGpuUtils.h>
 #include <OgreRenderQueue.h>
 #include <OgreRoot.h>
+#include <OgreTextureFilters.h>
+#include <OgreTextureGpuManager.h>
 
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/Context.h>
-
-#include <OgreTextureGpuManager.h>
 
 
 using namespace nimble::RmlOgre;
@@ -60,10 +60,13 @@ RenderInterface::RenderInterface(
 	this->macroblock.mDepthWrite = false;
 	this->macroblock.mCullMode = Ogre::CULL_NONE;
 
-	this->blendBlock.mSeparateBlend = false;
-	this->blendBlock.mBlendOperation = Ogre::SceneBlendOperation::SBO_ADD;
-	this->blendBlock.mDestBlendFactor = Ogre::SceneBlendFactor::SBF_ONE_MINUS_SOURCE_ALPHA;
-	this->blendBlock.mSourceBlendFactor = Ogre::SceneBlendFactor::SBF_ONE;
+	this->blendblock.mSeparateBlend = false;
+	this->blendblock.mBlendOperation = Ogre::SceneBlendOperation::SBO_ADD;
+	this->blendblock.mDestBlendFactor = Ogre::SceneBlendFactor::SBF_ONE_MINUS_SOURCE_ALPHA;
+	this->blendblock.mSourceBlendFactor = Ogre::SceneBlendFactor::SBF_ONE;
+
+	this->samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
+	this->samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
 
 	this->noTextureDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(
 		this->hlms->getDatablock("NoTexture"));
@@ -73,7 +76,7 @@ RenderInterface::RenderInterface(
 				"NoTexture",
 				"NoTexture",
 				this->macroblock,
-				this->blendBlock,
+				this->blendblock,
 				Ogre::HlmsParamVec())
 		);
 	this->noTextureDatablock->setUseColour(true);
@@ -348,12 +351,13 @@ Rml::TextureHandle RenderInterface::LoadTexture(
 	Ogre::TextureGpu* texture = nullptr;
 	if(!source.empty())
 	{
-		texture = textureManager->createOrRetrieveTexture(
+		texture = textureManager->createTexture(
 			source,
 			Ogre::GpuPageOutStrategy::Discard,
 			Ogre::TextureFlags::AutomaticBatching | Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB,
 			Ogre::TextureTypes::Type2D,
-			Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+			Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+			Ogre::TextureFilter::TypePremultiplyAlpha);
 		texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
 	}
 
@@ -367,8 +371,8 @@ Rml::TextureHandle RenderInterface::LoadTexture(
 	id.append("_Texture_");
 	id.append(std::to_string(this->datablockId++));
 	auto* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
-		this->hlms->createDatablock(id, id, this->macroblock, this->blendBlock, Ogre::HlmsParamVec()));
-	datablock->setTexture(0, texture);
+		this->hlms->createDatablock(id, id, this->macroblock, this->blendblock, Ogre::HlmsParamVec()));
+	datablock->setTexture(0, texture, &this->samplerblock);
 	datablock->setUseColour(true);
 
 	return reinterpret_cast<Rml::TextureHandle>(datablock);
@@ -400,7 +404,7 @@ Rml::TextureHandle RenderInterface::GenerateTexture(
 
 	Ogre::TextureGpuManager& textureManager = *Ogre::Root::getSingleton().getRenderSystem()
 		->getTextureGpuManager();
-	Ogre::TextureGpu* texture = textureManager.createOrRetrieveTexture(
+	Ogre::TextureGpu* texture = textureManager.createTexture(
 		id,
 		Ogre::GpuPageOutStrategy::AlwaysKeepSystemRamCopy,
 		Ogre::TextureFlags::AutomaticBatching,
@@ -418,8 +422,8 @@ Rml::TextureHandle RenderInterface::GenerateTexture(
 	texture->scheduleTransitionTo(Ogre::GpuResidency::Resident, image, false);
 
 	auto* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
-		this->hlms->createDatablock(id, id, this->macroblock, this->blendBlock, Ogre::HlmsParamVec()));
-	datablock->setTexture(0, texture);
+		this->hlms->createDatablock(id, id, this->macroblock, this->blendblock, Ogre::HlmsParamVec()));
+	datablock->setTexture(0, texture, &this->samplerblock);
 	datablock->setUseColour(true);
 
 	return reinterpret_cast<Rml::TextureHandle>(datablock);

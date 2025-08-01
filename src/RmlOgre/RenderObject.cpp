@@ -29,8 +29,8 @@ RenderObject::RenderObject(
 
 void RenderObject::setVao(Ogre::VertexArrayObject* vao)
 {
-	this->mVaoPerLod[Ogre::VpNormal].push_back(vao);
-	this->mVaoPerLod[Ogre::VpShadow].push_back(vao);
+	this->mVaoPerLod[Ogre::VertexPass::VpNormal].push_back(vao);
+	this->mVaoPerLod[Ogre::VertexPass::VpShadow].push_back(vao);
 }
 
 const Ogre::String& RenderObject::getMovableType() const
