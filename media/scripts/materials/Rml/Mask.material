@@ -1,0 +1,63 @@
+fragment_program Rml/Mask_ps_GLSL glsl
+{
+	source GLSL/Mask_ps.glsl
+	default_params
+	{
+		param_named dstTex int 0
+		param_named srcTex int 1
+	}
+}
+
+fragment_program Rml/Mask_ps_VK glslvk
+{
+	source GLSL/Mask_ps.glsl
+}
+
+fragment_program Rml/Mask_ps_HLSL hlsl
+{
+	source HLSL/Mask_ps.hlsl
+	entry_point main
+	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+}
+
+
+fragment_program Rml/Mask_ps unified
+{
+	delegate Rml/Mask_ps_HLSL
+	delegate Rml/Mask_ps_GLSL
+	delegate Rml/Mask_ps_VK
+}
+
+material Rml/Mask
+{
+	technique
+	{
+		pass
+		{
+			depth_check off
+			depth_write off
+
+			cull_hardware none
+
+			vertex_program_ref Ogre/Compositor/Quad_vs
+			{
+			}
+
+			fragment_program_ref Rml/Mask_ps
+			{
+			}
+
+			texture_unit srcTex
+			{
+				filtering        none
+				tex_address_mode clamp
+			}
+
+			texture_unit dstTex
+			{
+				filtering        none
+				tex_address_mode clamp
+			}
+		}
+	}
+}

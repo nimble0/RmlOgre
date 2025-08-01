@@ -5,6 +5,7 @@
 #include "ObjectIndex.hpp"
 #include "RenderObject.hpp"
 #include "Workspace.hpp"
+#include "filters.hpp"
 
 #include <OgreHlmsDatablock.h>
 #include <OgreHlmsSamplerblock.h>
@@ -32,6 +33,7 @@ class RenderInterface : public Rml::RenderInterface
 	Ogre::HlmsUnlitDatablock* noTextureDatablock;
 
 	std::unordered_map<Rml::String, std::unique_ptr<FilterMaker>> filterMakers;
+	MaskImageFilterMaker maskImageFilterMaker;
 	ObjectIndex<std::unique_ptr<Filter>> filters;
 
 	RenderPassSettings renderPassSettings;
@@ -135,6 +137,7 @@ public:
 	void ReleaseFilter(Rml::CompiledFilterHandle filter) override;
 
 	Rml::TextureHandle SaveLayerAsTexture() override;
+	Rml::CompiledFilterHandle SaveLayerAsMaskImage() override;
 };
 
 }

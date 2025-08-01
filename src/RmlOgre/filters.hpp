@@ -142,6 +142,17 @@ public:
 	std::unique_ptr<Filter> make(const Rml::Dictionary& parameters) override;
 };
 
+class MaskImageFilterMaker : public FilterMaker
+{
+	Ogre::MaterialPtr baseMaterial;
+
+public:
+	MaskImageFilterMaker();
+
+	SingleMaterialFilter make(Ogre::TextureGpu* image);
+	std::unique_ptr<Filter> make(const Rml::Dictionary& parameters) override;
+};
+
 }
 
 #endif // NIMBLE_RMLOGRE_FILTERS_HPP

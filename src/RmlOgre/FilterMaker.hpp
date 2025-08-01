@@ -30,6 +30,7 @@ public:
 	{}
 
 	void apply(RenderInterface& renderInterface) override;
+	void release(RenderInterface& renderInterface) override;
 };
 
 class FilterMaker

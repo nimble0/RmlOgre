@@ -1,0 +1,24 @@
+<rml>
+	<head>
+		<style>
+			body
+			{
+				width: 100%;
+				height: 100%;
+				background-color: #005;
+				mask-image: image("star.png" repeat);
+			}
+
+			img
+			{
+				width: 100%;
+				height: 100%;
+			}
+		</style>
+	</head>
+	<body>
+		<img src="star.png" />
+	</body>
+</rml>
+
+

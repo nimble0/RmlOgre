@@ -301,3 +301,27 @@ std::unique_ptr<Filter> SaturateFilterMaker::make(const Rml::Dictionary& paramet
 	};
 	return this->make(matrix);
 }
+
+
+MaskImageFilterMaker::MaskImageFilterMaker()
+{
+	this->baseMaterial = Ogre::MaterialManager::getSingleton().getByName("Rml/Mask");
+}
+
+SingleMaterialFilter MaskImageFilterMaker::make(Ogre::TextureGpu* image)
+{
+	auto material = this->baseMaterial->clone("");
+	material->load();
+	auto textureUnit = material
+		->getBestTechnique()
+		->getPass(0)
+		->getTextureUnitState("dstTex");
+	textureUnit->setTexture(image);
+	return SingleMaterialFilter(material);
+}
+
+std::unique_ptr<Filter> MaskImageFilterMaker::make(const Rml::Dictionary& parameters)
+{
+	void* texture = Rml::Get<void*>(parameters, "maskImage", nullptr);
+	return std::make_unique<SingleMaterialFilter>(this->make(static_cast<Ogre::TextureGpu*>(texture)));
+}

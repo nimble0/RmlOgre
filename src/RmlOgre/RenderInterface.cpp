@@ -2,7 +2,6 @@
 
 #include "Compositor/CompositorPassGeometry.hpp"
 #include "Compositor/CompositorPassGeometryDef.hpp"
-#include "filters.hpp"
 #include "geometry.hpp"
 
 #include <Compositor/OgreCompositorManager2.h>
@@ -487,4 +486,40 @@ Rml::TextureHandle RenderInterface::SaveLayerAsTexture()
 	this->passes.push_back(RenderToTexturePass(renderTexture.second, this->renderPassSettings));
 
 	return reinterpret_cast<Rml::TextureHandle>(datablock);
+}
+
+Rml::CompiledFilterHandle RenderInterface::SaveLayerAsMaskImage()
+{
+	Rml::Vector2i dimensions;
+	if(this->renderPassSettings.enableScissor)
+		dimensions = this->renderPassSettings.scissorRegion.Size();
+	else
+		dimensions = Rml::Vector2i{
+			int(this->workspace.width()),
+			int(this->workspace.height())
+		};
+
+	auto renderTexture = this->workspace.getRenderTexture();
+	Ogre::TextureGpu* texture = renderTexture.first;
+	// This looks wrong but it works?
+	// Don't want to invalidate texture pointer so don't recreate texture
+	if(texture->getResidencyStatus() == Ogre::GpuResidency::Resident)
+	{
+		texture->_transitionTo(Ogre::GpuResidency::OnStorage, nullptr);
+		texture->_setNextResidencyStatus(Ogre::GpuResidency::OnStorage);
+	}
+	texture->setResolution(dimensions.x, dimensions.y);
+	if(texture->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
+	{
+		texture->_transitionTo(Ogre::GpuResidency::Resident, nullptr);
+		texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
+	}
+
+	this->passes.push_back(RenderToTexturePass(
+		renderTexture.second,
+		this->renderPassSettings));
+
+	auto filter = this->maskImageFilterMaker.make(texture);
+	auto handle = this->filters.insert(std::make_unique<SingleMaterialFilter>(filter));
+	return handle;
 }
