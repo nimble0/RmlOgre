@@ -1,0 +1,28 @@
+vertex_program Rml/Shader_vs_GLSL glsl
+{
+	source GLSL/Shader_vs.glsl
+}
+
+vertex_program Rml/Shader_vs_VK glslvk
+{
+	source GLSL/Shader_vs.glsl
+}
+
+vertex_program Rml/Shader_vs_HLSL hlsl
+{
+	source HLSL/Shader_vs.hlsl
+	entry_point main
+	target vs_5_0 vs_4_0 vs_4_0_level_9_1 vs_4_0_level_9_3
+}
+
+vertex_program Rml/Shader_vs unified
+{
+	delegate Rml/Shader_vs_GLSL
+	delegate Rml/Shader_vs_VK
+	delegate Rml/Shader_vs_HLSL
+
+	default_params
+	{
+		param_named_auto worldViewProj worldviewproj_matrix
+	}
+}

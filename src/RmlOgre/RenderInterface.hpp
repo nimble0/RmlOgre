@@ -4,6 +4,7 @@
 #include "FilterMaker.hpp"
 #include "ObjectIndex.hpp"
 #include "RenderObject.hpp"
+#include "ShaderMaker.hpp"
 #include "Workspace.hpp"
 #include "filters.hpp"
 
@@ -35,6 +36,9 @@ class RenderInterface : public Rml::RenderInterface
 	std::unordered_map<Rml::String, std::unique_ptr<FilterMaker>> filterMakers;
 	MaskImageFilterMaker maskImageFilterMaker;
 	ObjectIndex<std::unique_ptr<Filter>> filters;
+
+	std::unordered_map<Rml::String, std::unique_ptr<ShaderMaker>> shaderMakers;
+	ObjectIndex<Ogre::MaterialPtr> shaders;
 
 	RenderPassSettings renderPassSettings;
 	int connectionId = 0;
@@ -84,6 +88,7 @@ public:
 
 
 	void AddFilterMaker(Rml::String name, std::unique_ptr<FilterMaker> filterMaker);
+	void AddShaderMaker(Rml::String name, std::unique_ptr<ShaderMaker> shaderMaker);
 
 	void BeginFrame();
 	void EndFrame();
@@ -138,6 +143,18 @@ public:
 
 	Rml::TextureHandle SaveLayerAsTexture() override;
 	Rml::CompiledFilterHandle SaveLayerAsMaskImage() override;
+
+	Rml::CompiledShaderHandle CompileShader(
+		const Rml::String& name,
+		const Rml::Dictionary& parameters
+	) override;
+	void RenderShader(
+		Rml::CompiledShaderHandle shader,
+		Rml::CompiledGeometryHandle geometry,
+		Rml::Vector2f translation,
+		Rml::TextureHandle texture
+	) override;
+	void ReleaseShader(Rml::CompiledShaderHandle shader) override;
 };
 
 }

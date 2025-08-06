@@ -50,6 +50,7 @@ target_sources(RmlOgre
 		src/RmlOgre/Workspace.cpp
 		src/RmlOgre/filters.cpp
 		src/RmlOgre/geometry.cpp
+		src/RmlOgre/shaders.cpp
 )
 
 target_link_libraries(RmlOgre

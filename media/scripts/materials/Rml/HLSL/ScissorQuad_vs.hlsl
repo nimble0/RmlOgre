@@ -7,7 +7,7 @@ struct VS_INPUT
 struct PS_INPUT
 {
 	float2 uv0         : TEXCOORD0;
-	float4 gl_Position : SV_Position;
+	float4 gl_Position : SV_POSITION;
 };
 
 PS_INPUT main
@@ -19,7 +19,7 @@ PS_INPUT main
 {
 	PS_INPUT outVs;
 
-	outVs.gl_Position = mul( worldViewProj, input.vertex ).xyzw;
+	outVs.gl_Position = mul( worldViewProj, input.vertex );
 	outVs.uv0         = scissorRegion.xy + input.uv0 * scissorRegion.zw;
 
 	return outVs;

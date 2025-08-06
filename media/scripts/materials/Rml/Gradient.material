@@ -1,0 +1,48 @@
+fragment_program Rml/Gradient_ps_GLSL glsl
+{
+	source GLSL/Gradient_ps.glsl
+}
+
+fragment_program Rml/Gradient_ps_VK glslvk
+{
+	source GLSL/Gradient_ps.glsl
+}
+
+fragment_program Rml/Gradient_ps_HLSL hlsl
+{
+	source HLSL/Gradient_ps.hlsl
+	entry_point main
+	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+}
+
+
+fragment_program Rml/Gradient_ps unified
+{
+	delegate Rml/Gradient_ps_HLSL
+	delegate Rml/Gradient_ps_GLSL
+	delegate Rml/Gradient_ps_VK
+}
+
+material Rml/Gradient
+{
+	technique
+	{
+		pass
+		{
+			scene_blend one one_minus_src_alpha
+
+			depth_check off
+			depth_write off
+
+			cull_hardware none
+
+			vertex_program_ref Rml/Shader_vs
+			{
+			}
+
+			fragment_program_ref Rml/Gradient_ps
+			{
+			}
+		}
+	}
+}

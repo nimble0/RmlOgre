@@ -1,0 +1,43 @@
+<rml>
+	<head>
+		<style>
+			body
+			{
+				width: 100%;
+				height: 100%;
+				font-family: "LatoLatin";
+			}
+
+			.box
+			{
+				display: inline-block;
+				width: 256px;
+				height: 256px;
+				margin: 10px;
+			}
+
+			.linear
+			{
+				decorator: linear-gradient(to bottom, #000, #f00);
+			}
+			.linear-multi
+			{
+				decorator: linear-gradient(to bottom, #00f3, #0001, #00f3), linear-gradient(to top right, red, blue);
+			}
+			.radial
+			{
+				decorator: radial-gradient(circle, red, yellow, green);
+			}
+			.conic
+			{
+				decorator: conic-gradient(red, yellow);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="box linear">linear</div>
+		<div class="box linear-multi">multiple linear</div>
+		<div class="box radial">radial</div>
+		<div class="box conic">conic</div>
+	</body>
+</rml>

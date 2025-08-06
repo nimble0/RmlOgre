@@ -3,6 +3,7 @@
 #include "Compositor/CompositorPassGeometry.hpp"
 #include "Compositor/CompositorPassGeometryDef.hpp"
 #include "geometry.hpp"
+#include "shaders.hpp"
 
 #include <Compositor/OgreCompositorManager2.h>
 #include <Compositor/OgreCompositorNode.h>
@@ -72,6 +73,11 @@ RenderInterface::RenderInterface(
 	this->AddFilterMaker("hue-rotate", std::make_unique<HueRotateFilterMaker>());
 	this->AddFilterMaker("saturate", std::make_unique<SaturateFilterMaker>());
 	this->filters.insert({});
+
+	this->AddShaderMaker("linear-gradient", std::make_unique<LinearGradientMaker>());
+	this->AddShaderMaker("radial-gradient", std::make_unique<RadialGradientMaker>());
+	this->AddShaderMaker("conic-gradient", std::make_unique<ConicGradientMaker>());
+	this->shaders.insert({});
 }
 
 void RenderInterface::releaseBufferedGeometries()
@@ -141,6 +147,10 @@ void RenderInterface::AddFilterMaker(Rml::String name, std::unique_ptr<FilterMak
 {
 	this->filterMakers.emplace(std::move(name), std::move(filterMaker));
 }
+void RenderInterface::AddShaderMaker(Rml::String name, std::unique_ptr<ShaderMaker> shaderMaker)
+{
+	this->shaderMakers.emplace(std::move(name), std::move(shaderMaker));
+}
 
 
 void RenderInterface::addPass(Pass&& pass)
@@ -173,7 +183,8 @@ void RenderInterface::RenderGeometry(
 	queue->push_back({
 		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 		translation,
-		texture ? reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture) : this->noTextureDatablock
+		texture ? reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture) : this->noTextureDatablock,
+		nullptr
 	});
 }
 void RenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry)
@@ -321,21 +332,24 @@ void RenderInterface::RenderToClipMask(
 		this->getRenderPass<RenderToStencilSetPass>().queue.push_back({
 			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 			translation,
-			this->noTextureDatablock
+			this->noTextureDatablock,
+			nullptr
 		});
 		break;
 	case Rml::ClipMaskOperation::SetInverse:
 		this->getRenderPass<RenderToStencilSetInversePass>().queue.push_back({
 			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 			translation,
-			this->noTextureDatablock
+			this->noTextureDatablock,
+			nullptr
 		});
 		break;
 	case Rml::ClipMaskOperation::Intersect:
 		this->getRenderPass<RenderToStencilIntersectPass>().queue.push_back({
 			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 			translation,
-			this->noTextureDatablock
+			this->noTextureDatablock,
+			nullptr
 		});
 		break;
 	}
@@ -522,4 +536,43 @@ Rml::CompiledFilterHandle RenderInterface::SaveLayerAsMaskImage()
 	auto filter = this->maskImageFilterMaker.make(texture);
 	auto handle = this->filters.insert(std::make_unique<SingleMaterialFilter>(filter));
 	return handle;
+}
+
+
+Rml::CompiledShaderHandle RenderInterface::CompileShader(
+	const Rml::String& name,
+	const Rml::Dictionary& parameters)
+{
+	auto maker = this->shaderMakers.find(name);
+	if(maker == this->shaderMakers.end())
+		return {};
+
+	auto shader = maker->second->make(parameters);
+	auto handle = this->shaders.insert(std::move(shader));
+	return handle;
+}
+void RenderInterface::RenderShader(
+	Rml::CompiledShaderHandle shader,
+	Rml::CompiledGeometryHandle geometry,
+	Rml::Vector2f translation,
+	Rml::TextureHandle texture)
+{
+	auto& material = this->shaders.at(shader);
+
+	std::vector<QueuedGeometry>* queue = nullptr;
+	if(this->renderPassSettings.enableStencil)
+		queue = &this->getRenderPass<RenderWithStencilPass>().queue;
+	else
+		queue = &this->getRenderPass<RenderPass>().queue;
+
+	queue->push_back({
+		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
+		translation,
+		nullptr,
+		material
+	});
+}
+void RenderInterface::ReleaseShader(Rml::CompiledShaderHandle shader)
+{
+	this->shaders.erase(shader);
 }
