@@ -1,37 +1,35 @@
-//-----------------------------------------------------------------------------
-// GLSL shaders
-fragment_program Rml/AlphaBlend_ps_GLSL glsl
+fragment_program Ogre/Copy/4xFP32_ps_HLSL hlsl
 {
-	source GLSL/AlphaBlend_ps.glsl
-	default_params
-	{
-		param_named dstTex int 0
-		param_named srcTex int 1
-	}
-}
-
-fragment_program Rml/AlphaBlend_ps_VK glslvk
-{
-	source GLSL/AlphaBlend_ps.glsl
-}
-
-// HLSL shaders
-fragment_program Rml/AlphaBlend_ps_HLSL hlsl
-{
-	source HLSL/AlphaBlend_ps.hlsl
+	source Copyback_4xFP32_ps.hlsl
 	entry_point main
 	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
 }
 
-
-fragment_program Rml/AlphaBlend_ps unified
+fragment_program Ogre/Copy/4xFP32_ps_GLSL glsl
 {
-	delegate Rml/AlphaBlend_ps_HLSL
-	delegate Rml/AlphaBlend_ps_GLSL
-	delegate Rml/AlphaBlend_ps_VK
+	source Copyback_4xFP32_ps.glsl
+	default_params { param_named tex int 0 }
 }
 
-// Material definition
+fragment_program Ogre/Copy/4xFP32_ps_VK glslvk
+{
+	source Copyback_4xFP32_ps.glsl
+}
+
+fragment_program Ogre/Copy/4xFP32_ps_Metal metal
+{
+	source Copyback_4xFP32_ps.metal
+	shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+
+fragment_program Ogre/Copy/4xFP32_ps unified
+{
+	delegate Ogre/Copy/4xFP32_ps_GLSL
+	delegate Ogre/Copy/4xFP32_ps_VK
+	delegate Ogre/Copy/4xFP32_ps_HLSL
+	delegate Ogre/Copy/4xFP32_ps_Metal
+}
+
 material Rml/AlphaBlend
 {
 	technique
@@ -43,24 +41,20 @@ material Rml/AlphaBlend
 
 			cull_hardware none
 
+			scene_blend one one_minus_src_alpha
+
 			vertex_program_ref Ogre/Compositor/Quad_vs
 			{
 			}
 
-			fragment_program_ref Rml/AlphaBlend_ps
+			fragment_program_ref Ogre/Copy/4xFP32_ps
 			{
-			}
-
-			texture_unit dstTex
-			{
-				filtering			none
-				tex_address_mode	clamp
 			}
 
 			texture_unit srcTex
 			{
-				filtering			none
-				tex_address_mode	clamp
+				filtering        none
+				tex_address_mode clamp
 			}
 		}
 	}
