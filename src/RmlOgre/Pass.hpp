@@ -110,21 +110,26 @@ struct RenderToStencilIntersectPass : BaseRenderPass
 	}
 };
 
-struct StartLayerPass : BasePass
+struct NewBufferPass : BasePass
 {
-	static constexpr const char* BASE_NODE_NAME = "Rml/StartLayer";
+	static constexpr const char* BASE_NODE_NAME = "Rml/NewBuffer";
 
-	int moveOut = -1;
+	int out = -1;
 
-	StartLayerPass(int moveOut) :
-		moveOut{moveOut}
+	NewBufferPass(int out) :
+		out{out}
 	{}
 
 	void addExtraConnections(NodeConnectionMap& connections) const override
 	{
-		assert(this->moveOut >= 0);
-		connections.setOut(this->moveOut, 3);
+		assert(this->out >= 0);
+		connections.setOut(this->out, 3);
 	}
+};
+
+struct StartLayerPass : BasePass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/StartLayer";
 };
 
 struct SwapPass : BasePass
@@ -151,15 +156,19 @@ struct CopyPass : BasePass
 {
 	static constexpr const char* BASE_NODE_NAME = "Rml/Copy";
 
+	int copyIn = -1;
 	int copyOut = -1;
 
-	CopyPass(int copyOut) :
+	CopyPass(int copyIn, int copyOut) :
+		copyIn{copyIn},
 		copyOut{copyOut}
 	{}
 
 	void addExtraConnections(NodeConnectionMap& connections) const override
 	{
+		assert(this->copyIn >= 0);
 		assert(this->copyOut >= 0);
+		connections.setIn(this->copyIn, 3);
 		connections.setOut(this->copyOut, 3);
 	}
 };
@@ -201,17 +210,21 @@ struct CompositePass : RenderQuadPass
 {
 	static constexpr const char* BASE_NODE_NAME = "Rml/Composite";
 
-	int dst = -1;
+	int dstIn = -1;
+	int tmpOut = -1;
 
 	CompositePass(
-		int dst,
+		int dstIn,
+		int tmpOut,
 		bool noBlending,
 		const RenderPassSettings& renderPassSettings);
 
 	void addExtraConnections(NodeConnectionMap& connections) const override
 	{
-		assert(this->dst >= 0);
-		connections.setIn(this->dst, 3);
+		assert(this->dstIn >= 0);
+		assert(this->tmpOut >= 0);
+		connections.setIn(this->dstIn, 3);
+		connections.setOut(this->tmpOut, 3);
 	}
 };
 
@@ -269,6 +282,7 @@ using Pass = std::variant<
 	RenderToStencilSetPass,
 	RenderToStencilSetInversePass,
 	RenderToStencilIntersectPass,
+	NewBufferPass,
 	StartLayerPass,
 	SwapPass,
 	CopyPass,

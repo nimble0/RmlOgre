@@ -126,14 +126,16 @@ void DropShadowFilter::apply(RenderInterface& renderInterface)
 	RenderPassSettings passSettings = renderInterface.currentRenderPassSettings();
 
 	int tempLayer = renderInterface.addConnection();
-	renderInterface.addPass(CopyPass(tempLayer));
+	renderInterface.addPass(CopyPass(renderInterface.acquireLayerBuffer(), tempLayer));
 
 	renderInterface.addPass(RenderQuadPass(this->shadowMaterial, passSettings));
 	this->blurFilter.apply(renderInterface);
 
 	int shadowLayer = renderInterface.addConnection();
 	renderInterface.addPass(SwapPass(tempLayer, shadowLayer));
-	renderInterface.addPass(CompositePass(shadowLayer, false, passSettings));
+	int discardCopy = renderInterface.addConnection();
+	renderInterface.addPass(CompositePass(shadowLayer, discardCopy, false, passSettings));
+	renderInterface.releaseLayerBuffer(discardCopy);
 }
 
 DropShadowFilterMaker::DropShadowFilterMaker()

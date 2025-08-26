@@ -43,6 +43,7 @@ class RenderInterface : public Rml::RenderInterface
 	RenderPassSettings renderPassSettings;
 	int connectionId = 0;
 	std::vector<int> layerBuffers;
+	int numActiveLayers = 0;
 	Passes passes;
 
 	int datablockId = 0;
@@ -81,6 +82,10 @@ public:
 
 
 	int addConnection() { return this->connectionId++; }
+	int getLayerBuffer(int index);
+	void putLayerBuffer(int index, int id);
+	int acquireLayerBuffer();
+	void releaseLayerBuffer(int id);
 
 	const RenderPassSettings& currentRenderPassSettings() const { return this->renderPassSettings; }
 	void addPass(Pass&& pass);

@@ -124,12 +124,55 @@ void RenderInterface::releaseBufferedTextures()
 	this->releaseRenderTextures.clear();
 }
 
+int RenderInterface::getLayerBuffer(int index)
+{
+	if(index < 0)
+		index += this->numActiveLayers;
+
+	if(index >= static_cast<int>(this->layerBuffers.size()))
+		throw std::out_of_range("Layer buffer index out of range");
+
+	int id = this->layerBuffers[index];
+	this->layerBuffers[index] = -1;
+	return id;
+}
+void RenderInterface::putLayerBuffer(int index, int id)
+{
+	if(index < 0)
+		index += this->numActiveLayers;
+
+	if(index >= static_cast<int>(this->layerBuffers.size()))
+		throw std::out_of_range("Layer buffer index out of range");
+
+	this->layerBuffers[index] = id;
+}
+int RenderInterface::acquireLayerBuffer()
+{
+	if(this->numActiveLayers == static_cast<int>(this->layerBuffers.size()))
+	{
+		int id = this->addConnection();
+		this->layerBuffers.push_back(id);
+		this->passes.push_back(NewBufferPass(id));
+	}
+
+	++this->numActiveLayers;
+	return this->getLayerBuffer(-1);
+}
+void RenderInterface::releaseLayerBuffer(int id)
+{
+	this->putLayerBuffer(-1, id);
+	--this->numActiveLayers;
+}
+
 
 void RenderInterface::BeginFrame()
 {
 	this->workspace.clearAll();
 	this->releaseBufferedGeometries();
 	this->releaseBufferedTextures();
+
+	this->numActiveLayers = 1;
+	this->layerBuffers.push_back(-1);
 }
 
 void RenderInterface::EndFrame()
@@ -138,6 +181,7 @@ void RenderInterface::EndFrame()
 
 	this->passes.clear();
 	this->layerBuffers.clear();
+	this->numActiveLayers = 0;
 	this->renderPassSettings = RenderPassSettings{};
 	this->connectionId = 0;
 }
@@ -370,9 +414,13 @@ void RenderInterface::RenderToClipMask(
 Rml::LayerHandle RenderInterface::PushLayer()
 {
 	int oldTopLayer = this->addConnection();
-	this->layerBuffers.push_back(oldTopLayer);
-	this->passes.push_back({StartLayerPass(oldTopLayer)});
-	return Rml::LayerHandle{this->layerBuffers.size()};
+	this->putLayerBuffer(-1, oldTopLayer);
+	int newLayer = this->acquireLayerBuffer();
+
+	this->passes.push_back(SwapPass(newLayer, oldTopLayer));
+	this->passes.push_back(StartLayerPass{});
+
+	return Rml::LayerHandle(this->numActiveLayers - 1);
 }
 void RenderInterface::CompositeLayers(
 	Rml::LayerHandle source,
@@ -384,17 +432,20 @@ void RenderInterface::CompositeLayers(
 	int sourceLayer = -1;
 	int destinationLayer = -1;
 
-	bool sourceIsTopLayer = source == this->layerBuffers.size();
-	bool destinationIsTopLayer = destination == this->layerBuffers.size();
+	bool sourceIsTopLayer = static_cast<int>(source) == this->numActiveLayers - 1;
+	bool destinationIsTopLayer = static_cast<int>(destination) == this->numActiveLayers - 1;
 
-	if(!sourceIsTopLayer)
-	{
-		this->passes.push_back(SwapPass(this->layerBuffers.at(source), topLayer));
-		sourceLayer = this->addConnection();
-		this->passes.push_back(CopyPass(sourceLayer));
-	}
+
+	int tempLayer = this->acquireLayerBuffer();
+	if(sourceIsTopLayer)
+		this->passes.push_back(CopyPass(tempLayer, topLayer));
 	else
-		this->passes.push_back(CopyPass(topLayer));
+	{
+		this->passes.push_back(SwapPass(this->getLayerBuffer(source), topLayer));
+		sourceLayer = this->addConnection();
+		this->passes.push_back(CopyPass(tempLayer, sourceLayer));
+	}
+	tempLayer = this->addConnection();
 
 	if(destinationIsTopLayer)
 	{
@@ -410,7 +461,7 @@ void RenderInterface::CompositeLayers(
 		destinationLayer = this->layerBuffers.at(destination);
 
 	if(sourceLayer != -1)
-		this->layerBuffers.at(source) = sourceLayer;
+		this->putLayerBuffer(source, sourceLayer);
 
 
 	for(auto filter : filters)
@@ -418,27 +469,37 @@ void RenderInterface::CompositeLayers(
 
 
 	if(this->renderPassSettings.enableStencil)
+	{
 		this->passes.push_back(CompositeWithStencilPass(
 			destinationLayer,
+			tempLayer,
 			blend_mode == Rml::BlendMode::Replace,
 			this->renderPassSettings));
+	}
 	else
+	{
 		this->passes.push_back(CompositePass(
 			destinationLayer,
+			tempLayer,
 			blend_mode == Rml::BlendMode::Replace,
 			this->renderPassSettings));
+	}
+	this->releaseLayerBuffer(tempLayer);
 
 	if(!destinationIsTopLayer)
 	{
 		destinationLayer = this->addConnection();
+		this->putLayerBuffer(destination, destinationLayer);
 		this->passes.push_back(SwapPass(topLayer, destinationLayer));
-		this->layerBuffers.at(destination) = destinationLayer;
 	}
 }
 void RenderInterface::PopLayer()
 {
-	this->passes.push_back({SwapPass(this->layerBuffers.back())});
-	this->layerBuffers.pop_back();
+	int poppedLayer = this->addConnection();
+	this->releaseLayerBuffer(poppedLayer);
+	int newTopLayer = this->getLayerBuffer(-1);
+
+	this->passes.push_back(SwapPass{newTopLayer, poppedLayer});
 }
 
 
