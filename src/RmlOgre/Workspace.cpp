@@ -176,6 +176,7 @@ void Workspace::buildWorkspace(const std::array<std::size_t, NUM_NODE_TYPES>& re
 	this->workspaceDef->connectExternal(1, "Rml/Start", 0);
 
 	std::array<std::vector<Ogre::IdString>, NUM_NODE_TYPES> nodeTypeNames;
+	// Start from 1 to skip null passes
 	for(std::size_t i = 1; i < reservedNodes.size(); ++i)
 	{
 		auto& nodeType = this->nodeTypes[i];
@@ -392,10 +393,13 @@ void Workspace::populateWorkspace(const Passes& passes)
 	// Fill in passes with data
 	auto nodeIter = activeNodes.begin();
 	for(auto& pass : passes)
-		std::visit([&](auto& pass)
-		{
-			pass.writePass(*this, *nodeIter++);
-		}, pass);
+	{
+		if(pass.index() != 0)
+			std::visit([&](auto& pass)
+			{
+				pass.writePass(*this, *nodeIter++);
+			}, pass);
+	}
 
 	this->updateSceneNodes();
 }

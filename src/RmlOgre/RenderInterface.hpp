@@ -25,6 +25,23 @@ class TextureGpu;
 
 namespace nimble::RmlOgre {
 
+struct Layer
+{
+	int connectionId = -1;
+	int copyPass = -1;
+
+	Layer take()
+	{
+		Layer self = *this;
+		this->connectionId = -1;
+		return self;
+	}
+	bool isTaken() const
+	{
+		return this->connectionId == -1;
+	}
+};
+
 class RenderInterface : public Rml::RenderInterface
 {
 	Ogre::HlmsUnlit* hlms = nullptr;
@@ -42,7 +59,7 @@ class RenderInterface : public Rml::RenderInterface
 
 	RenderPassSettings renderPassSettings;
 	int connectionId = 0;
-	std::vector<int> layerBuffers;
+	std::vector<Layer> layerBuffers;
 	int numActiveLayers = 0;
 	Passes passes;
 
@@ -82,10 +99,10 @@ public:
 
 
 	int addConnection() { return this->connectionId++; }
-	int getLayerBuffer(int index);
-	void putLayerBuffer(int index, int id);
-	int acquireLayerBuffer();
-	void releaseLayerBuffer(int id);
+	Layer getLayerBuffer(int index);
+	void putLayerBuffer(int index, Layer id);
+	Layer acquireLayerBuffer();
+	void releaseLayerBuffer(Layer id);
 
 	const RenderPassSettings& currentRenderPassSettings() const { return this->renderPassSettings; }
 	void addPass(Pass&& pass);
