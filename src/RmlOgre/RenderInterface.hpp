@@ -62,6 +62,7 @@ class RenderInterface : public Rml::RenderInterface
 	Ogre::CompositorWorkspace* workspace = nullptr;
 	Ogre::CompositorWorkspaceDef* workspaceDef = nullptr;
 	Ogre::TextureGpu* output = nullptr;
+	Ogre::TextureGpu* background = nullptr;
 	std::vector<Ogre::CompositorNode*> geometryNodes;
 
 	std::vector<Pass> passes;
@@ -91,16 +92,11 @@ public:
 	RenderInterface(
 		const Ogre::String& name,
 		Ogre::SceneManager* sceneManager,
-		Rml::Vector2i resolution);
+		Ogre::TextureGpu* output,
+		Ogre::TextureGpu* background);
 
 	void BeginFrame();
 	void EndFrame();
-
-	void SetViewport(Rml::Vector2i dimensions);
-	void SetViewport(int width, int height);
-
-	Ogre::TextureGpu* GetOutput() { return this->output; }
-	const Ogre::TextureGpu* GetOutput() const { return this->output; }
 
 	Rml::CompiledGeometryHandle CompileGeometry(
 		Rml::Span<const Rml::Vertex> vertices,

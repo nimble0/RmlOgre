@@ -169,23 +169,33 @@ struct MyCompositorPassProvider : public Ogre::CompositorPassProvider
 class MyWindowEventListener final : public Ogre::WindowEventListener
 {
 	bool mQuit = false;
-	nimble::RmlOgre::RenderInterface* mainRenderInterface = nullptr;
 	Rml::Context* rmlContext = nullptr;
+	Ogre::TextureGpu* sceneTexture;
 
 public:
 	MyWindowEventListener(
-		nimble::RmlOgre::RenderInterface* mainRenderInterface,
-		Rml::Context* rmlContext
+		Rml::Context* rmlContext,
+		Ogre::TextureGpu* sceneTexture
 	) :
-		mainRenderInterface{mainRenderInterface},
-		rmlContext{rmlContext}
+		rmlContext{rmlContext},
+		sceneTexture{sceneTexture}
 	{}
 	void windowClosed( Ogre::Window *rw ) override { mQuit = true; }
 	void windowResized( Ogre::Window *rw ) override
 	{
 		auto size = Rml::Vector2i(rw->getWidth(), rw->getHeight());
-		this->mainRenderInterface->SetViewport(size);
 		this->rmlContext->SetDimensions(size);
+		if(this->sceneTexture->getResidencyStatus() == Ogre::GpuResidency::Resident)
+		{
+			this->sceneTexture->_transitionTo(Ogre::GpuResidency::OnStorage, nullptr);
+			this->sceneTexture->_setNextResidencyStatus(Ogre::GpuResidency::OnStorage);
+		}
+		this->sceneTexture->setResolution(size.x, size.y);
+		if(this->sceneTexture->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
+		{
+			this->sceneTexture->_transitionTo(Ogre::GpuResidency::Resident, nullptr);
+			this->sceneTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
+		}
 	}
 
 	bool getQuit() const { return mQuit; }
@@ -291,9 +301,31 @@ int main( int argc, const char *argv[] )
 		->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 	itemNode->attachObject(item);
 
+	Ogre::TextureGpu* sceneTexture = Ogre::Root::getSingleton()
+		.getRenderSystem()
+		->getTextureGpuManager()
+		->createOrRetrieveTexture(
+			"SceneOutput",
+			Ogre::GpuPageOutStrategy::Discard,
+			Ogre::TextureFlags::RenderToTexture,
+			Ogre::TextureTypes::Type2D);
+	sceneTexture->setPixelFormat(Ogre::PixelFormatGpu::PFG_RGBA16_FLOAT);
+	sceneTexture->setResolution(100, 100);
+	if(sceneTexture->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
+	{
+		sceneTexture->_transitionTo(Ogre::GpuResidency::Resident, nullptr);
+		sceneTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
+	}
+	compositorManager->addWorkspace(
+		sceneManager,
+		sceneTexture,
+		camera,
+		"ExampleWorkspace",
+		true);
+
 
 	auto resolution = Rml::Vector2i(window->getWidth(), window->getHeight());
-	nimble::RmlOgre::RenderInterface renderInterface("Ui", sceneManager, resolution);
+	nimble::RmlOgre::RenderInterface renderInterface("Ui", sceneManager, window->getTexture(), sceneTexture);
 	Rml::Context* context = Rml::CreateContext(
 		"Main",
 		resolution,
@@ -304,15 +336,7 @@ int main( int argc, const char *argv[] )
 		document->Show();
 
 
-	compositorManager->addWorkspace(
-		sceneManager,
-		{ window->getTexture(), renderInterface.GetOutput() },
-		camera,
-		"ExampleWorkspace",
-		true);
-
-
-	MyWindowEventListener myWindowEventListener(&renderInterface, context);
+	MyWindowEventListener myWindowEventListener(context, sceneTexture);
 	WindowEventUtilities::addWindowEventListener(window, &myWindowEventListener);
 
 	bool bQuit = false;

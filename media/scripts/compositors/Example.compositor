@@ -1,7 +1,6 @@
 compositor_node Scene
 {
-	texture rt0 target_width target_height PFG_RGBA16_FLOAT depth_pool 2 depth_format PFG_D32_FLOAT msaa_auto
-	texture rt1 target_width target_height PFG_RGBA16_FLOAT depth_pool 2 depth_format PFG_D32_FLOAT msaa_auto
+	in 0 rt0
 
 	target rt0
 	{
@@ -15,52 +14,9 @@ compositor_node Scene
 			overlays off
 		}
 	}
-
-	out 0 rt0
-    out 1 rt1
-}
-
-compositor_node Ui
-{
-	in 0 rt0
-	in 1 rt1
-	in 2 ui_texture
-
-	target rt0
-	{
-		pass render_quad
-		{
-			material Rml/AlphaBlend
-			input 0 ui_texture
-		}
-	}
-
-	out 0 rt0
-	out 1 rt1
-}
-
-compositor_node Final
-{
-	in 0 rt0
-	in 1 rt_out
-
-	target rt_out
-	{
-		pass render_quad
-		{
-			material Ogre/Copy/4xFP32
-			input 0 rt0
-		}
-	}
 }
 
 workspace ExampleWorkspace
 {
-	connect Scene 0 Ui 0
-	connect Scene 1 Ui 1
-
-	connect Ui 0 Final 0
-
-	connect_external 0 Final 1
-	connect_external 1 Ui 2
+	connect_external 0 Scene 0
 }

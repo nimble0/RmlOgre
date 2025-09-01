@@ -29,26 +29,20 @@ using namespace nimble::RmlOgre;
 RenderInterface::RenderInterface(
 	const Ogre::String& name,
 	Ogre::SceneManager* sceneManager,
-	Rml::Vector2i resolution
+	Ogre::TextureGpu* output,
+	Ogre::TextureGpu* background
 ) :
 	hlms{static_cast<Ogre::HlmsUnlit*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT))},
+	output{output},
+	background{background},
 	sceneManager{sceneManager}
 {
 	this->camera = this->sceneManager->createCamera(name + "_Camera");
-	this->output = Ogre::Root::getSingleton()
-		.getRenderSystem()
-		->getTextureGpuManager()
-		->createOrRetrieveTexture(
-			name,
-			Ogre::GpuPageOutStrategy::Discard,
-			Ogre::TextureFlags::RenderToTexture,
-			Ogre::TextureTypes::Type2D);
-	this->output->setPixelFormat(Ogre::PFG_RGBA16_FLOAT);
-	this->SetViewport(resolution);
 
 	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
 	this->workspaceDef = compositorManager->addWorkspaceDefinition(name);
 	this->workspaceDef->connectExternal(0, "Rml/End", 1);
+	this->workspaceDef->connectExternal(1, "Rml/Start", 0);
 	// Prevent warnings
 	// Can't disable nodes in scripts
 	compositorManager->getNodeDefinitionNonConst("Rml/Render")->setStartEnabled(false);
@@ -109,7 +103,7 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 
 	this->workspace = compositorManager->addWorkspace(
 		this->sceneManager,
-		this->output,
+		{ this->output, this->background },
 		this->camera,
 		this->workspaceDef->getName(),
 		true);
@@ -302,37 +296,8 @@ void RenderInterface::BeginFrame()
 
 void RenderInterface::EndFrame()
 {
-	this->populateWorkspace();
-
-	this->passes.clear();
-	this->passes.push_back({});
-}
-
-void RenderInterface::SetViewport(Rml::Vector2i dimensions)
-{
-	this->SetViewport(dimensions.x, dimensions.y);
-}
-void RenderInterface::SetViewport(int width, int height)
-{
-	assert(width > 0);
-	assert(height > 0);
-
-	// This looks wrong but it works?
-	// Don't want to invalidate texture pointer so don't recreate texture
-	if(this->output->getResidencyStatus() == Ogre::GpuResidency::Resident)
-	{
-		this->output->_transitionTo(Ogre::GpuResidency::OnStorage, nullptr);
-		this->output->_setNextResidencyStatus(Ogre::GpuResidency::OnStorage);
-	}
-	this->output->setResolution(width, height);
-	if(this->output->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
-	{
-		this->output->_transitionTo(Ogre::GpuResidency::Resident, nullptr);
-		this->output->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-	}
-
-	float scaleX = 2.0f / width;
-	float scaleY = -2.0f / height;
+	float scaleX = 2.0f / this->output->getWidth();
+	float scaleY = -2.0f / this->output->getHeight();
 	this->camera->setCustomProjectionMatrix(true, Ogre::Matrix4
 	{
 		scaleX, 0.0,    0.0, -1.0,
@@ -340,6 +305,11 @@ void RenderInterface::SetViewport(int width, int height)
 		0.0,    0.0,    1.0, 0.0,
 		0.0,    0.0,    0.0, 1.0
 	});
+
+	this->populateWorkspace();
+
+	this->passes.clear();
+	this->passes.push_back({});
 }
 
 
