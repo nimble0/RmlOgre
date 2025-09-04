@@ -70,34 +70,19 @@ NodeType get_pass_node_type(std::size_t i)
 }
 
 void connect_nodes(
-	Ogre::CompositorWorkspaceDef& self,
 	std::size_t maxChannels,
-	Ogre::IdString outNode,
-	Ogre::IdString inNode )
+	Ogre::CompositorNode* outNode,
+	Ogre::CompositorNode* inNode)
 {
 	using namespace Ogre;
 
-	IdString aliasedOutNode = outNode;
-	IdString aliasedInNode = inNode;
-
-	auto& mAliasedNodes = self.getNodeAliasMap();
-	auto* mCompositorManager = self.getCompositorManager();
-
-	CompositorWorkspaceDef::NodeAliasMap::const_iterator aliasedOutNodeIt = mAliasedNodes.find( outNode );
-	if( aliasedOutNodeIt != mAliasedNodes.end() )
-		aliasedOutNode = aliasedOutNodeIt->second;
-
-	CompositorWorkspaceDef::NodeAliasMap::const_iterator aliasedInNodeIt = mAliasedNodes.find( inNode );
-	if( aliasedInNodeIt != mAliasedNodes.end() )
-		aliasedInNode = aliasedInNodeIt->second;
-
-	const CompositorNodeDef *outDef = mCompositorManager->getNodeDefinition( aliasedOutNode );
-	const CompositorNodeDef *inDef = mCompositorManager->getNodeDefinition( aliasedInNode );
+	const CompositorNodeDef* outDef = outNode->getDefinition();
+	const CompositorNodeDef* inDef = inNode->getDefinition();
 
 	size_t channels = std::min({inDef->getNumInputChannels(), outDef->getNumOutputChannels(), maxChannels});
 
-	for( uint32 i = 0; i < channels; ++i )
-		self.connect( outNode, i, inNode, i );
+	for(uint32 i = 0; i < channels; ++i)
+		outNode->connectTo(i, inNode, i);
 }
 
 std::size_t grow_capacity(std::size_t current, std::size_t min)
@@ -335,19 +320,34 @@ void Workspace::populateWorkspace(const Passes& passes)
 	this->reserveRenderObjects(totalRenderObjects);
 	this->reserveSceneNodes(totalRenderObjects);
 
-	// Connect required nodes in workspace, which creates passes
+
+	// Connect nodes
+	auto& nodeSequence = const_cast<Ogre::CompositorNodeVec&>(this->workspace->getNodeSequence());
+	for(auto* node : nodeSequence)
+		node->_notifyCleared();
+
+	Ogre::CompositorNode* startNode = this->workspace->findNode("Rml/Start");
+	Ogre::CompositorNode* endNode = this->workspace->findNode("Rml/End");
+
+	nodeSequence.clear();
+	nodeSequence.push_back(startNode);
+
+	startNode->connectExternalRT(
+		this->workspace->getExternalRenderTargets()[1],
+		0);
+	endNode->connectExternalRT(
+		this->workspace->getExternalRenderTargets()[0],
+		1);
+
 	using NodesIter = std::vector<Ogre::CompositorNode*>::iterator;
 	std::vector<std::pair<NodesIter, NodesIter>> nodeTypeIters;
 	nodeTypeIters.reserve(this->nodeTypes.size());
 	for(auto& type : this->nodeTypes)
 		nodeTypeIters.push_back({type.nodes.begin(), type.nodes.end()});
 
-	std::vector<Ogre::CompositorNode*> activeNodes;
-	activeNodes.reserve(passes.size());
+	NodeConnectionMap extraConnections(this->workspace);
 
-	NodeConnectionMap extraConnections(this->workspaceDef);
-
-	Ogre::IdString lastActiveNode = "Rml/Start";
+	Ogre::CompositorNode* lastActiveNode = startNode;
 	for(auto& pass : passes)
 	{
 		// Skip null passes
@@ -355,51 +355,45 @@ void Workspace::populateWorkspace(const Passes& passes)
 			continue;
 
 		auto& nodeTypeIterPair = nodeTypeIters.at(pass.index());
-		auto nodeType = nodeTypeIterPair.first++;
-		assert(nodeType != nodeTypeIterPair.second);
+		auto nodeIter = nodeTypeIterPair.first++;
+		assert(nodeIter != nodeTypeIterPair.second);
 
-		(*nodeType)->setEnabled(true);
-		auto nodeName = (*nodeType)->getName();
+		Ogre::CompositorNode* node = *nodeIter;
+		node->setEnabled(true);
+		connect_nodes(3, lastActiveNode, node);
 
-		connect_nodes(*this->workspaceDef, 3, lastActiveNode, nodeName);
-		extraConnections.setCurrentNode(nodeName);
+		extraConnections.setCurrentNode(node);
 		std::visit([&](auto& pass)
 		{
 			pass.addExtraConnections(extraConnections);
 		}, pass);
-		extraConnections.setCurrentNode(Ogre::IdString{});
+		extraConnections.setCurrentNode(nullptr);
 
-		activeNodes.push_back(*nodeType);
-		lastActiveNode = nodeName;
+		if(node->_getPasses().empty())
+			node->createPasses();
+		std::visit([&](auto& pass)
+		{
+			pass.writePass(*this, node);
+		}, pass);
+
+		nodeSequence.push_back(node);
+		lastActiveNode = node;
 	}
+
+	lastActiveNode->connectTo(0, endNode, 0);
+	nodeSequence.push_back(endNode);
+
 	// Disable unused nodes
 	for(auto& iters : nodeTypeIters)
 		for(auto iter = iters.first; iter != iters.second; ++iter)
+		{
 			(*iter)->setEnabled(false);
+			nodeSequence.push_back(*iter);
+		}
 
-	for(auto& connection : extraConnections)
-		if(connection.inChannel != -1)
-			this->workspaceDef->connect(
-				connection.outNode,
-				connection.outChannel,
-				connection.inNode,
-				connection.inChannel);
-
-	this->workspaceDef->connect(lastActiveNode, 0, "Rml/End", 0);
-	this->workspaceDef->connectExternal(0, "Rml/End", 1);
-	this->workspaceDef->connectExternal(1, "Rml/Start", 0);
-	this->workspace->reconnectAllNodes();
-
-	// Fill in passes with data
-	auto nodeIter = activeNodes.begin();
-	for(auto& pass : passes)
-	{
-		if(pass.index() != 0)
-			std::visit([&](auto& pass)
-			{
-				pass.writePass(*this, *nodeIter++);
-			}, pass);
-	}
+	startNode->createPasses();
+	endNode->createPasses();
+	this->workspace->_notifyBarriersDirty();
 
 	this->updateSceneNodes();
 }

@@ -1,6 +1,9 @@
 #include "NodeConnectionMap.hpp"
 
-#include <Compositor/OgreCompositorWorkspaceDef.h>
+#include <Compositor/OgreCompositorNode.h>
+#include <Compositor/OgreCompositorWorkspace.h>
+
+#include <stdexcept>
 
 
 using namespace nimble::RmlOgre;
@@ -10,23 +13,25 @@ void NodeConnectionMap::setIn(int id, int channel)
 	if(id < 0)
 		return;
 
-	if(static_cast<std::size_t>(id) >= this->map.size())
-		this->map.resize(id + 1);
-	this->map[id].inNode = this->currentNode;
-	this->map[id].inChannel = channel;
+	auto outIter = this->outMap.find(id);
+	if(outIter == this->outMap.end())
+		throw std::logic_error("No out connection specified for id " + id);
+
+	Ogre::CompositorNode* outNode = outIter->second.first;
+	int outChannel = outIter->second.second;
+	outNode->connectTo(outChannel, this->currentNode, channel);
 }
 void NodeConnectionMap::setOut(int id, int channel)
 {
 	if(id < 0)
 		return;
 
-	if(static_cast<std::size_t>(id) >= this->map.size())
-		this->map.resize(id + 1);
-	this->map[id].outNode = this->currentNode;
-	this->map[id].outChannel = channel;
+	this->outMap.insert({id, {this->currentNode, channel}});
 }
 
 void NodeConnectionMap::setExternal(int externalChannel, int channel)
 {
-	this->workspace->connectExternal(externalChannel, this->currentNode, channel);
+	this->currentNode->connectExternalRT(
+		this->workspace->getExternalRenderTargets()[externalChannel],
+		channel);
 }
