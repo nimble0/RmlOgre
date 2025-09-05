@@ -1,4 +1,4 @@
-#include "Geometry.hpp"
+#include "geometry.hpp"
 
 #include <OgreRoot.h>
 #include <Vao/OgreVaoManager.h>
@@ -49,7 +49,7 @@ struct GuiVertex
 
 const Ogre::VertexElement2Vec GuiVertex::FORMAT = GuiVertex::format();
 
-Geometry::Geometry(
+Ogre::VertexArrayObject* nimble::RmlOgre::create_vao(
 	Rml::Span<const Rml::Vertex> vertices,
 	Rml::Span<const int> indices)
 {
@@ -86,25 +86,8 @@ Geometry::Geometry(
 		ogreIndices,
 		true);
 
-	this->vao = vaoManager->createVertexArrayObject(
+	return vaoManager->createVertexArrayObject(
 		vertexBuffers,
 		indexBuffer,
 		Ogre::OT_TRIANGLE_LIST);
-}
-
-Geometry::~Geometry()
-{
-	Ogre::Root& root = Ogre::Root::getSingleton();
-	Ogre::RenderSystem* renderSystem = root.getRenderSystem();
-	Ogre::VaoManager* vaoManager = renderSystem->getVaoManager();
-
-	if(this->vao)
-	{
-		for(auto* buffer : this->vao->getVertexBuffers())
-			vaoManager->destroyVertexBuffer(buffer);
-
-		if(this->vao->getIndexBuffer())
-			vaoManager->destroyIndexBuffer(this->vao->getIndexBuffer());
-		vaoManager->destroyVertexArrayObject(this->vao);
-	}
 }

@@ -23,6 +23,7 @@ class HlmsUnlit;
 class HlmsUnlitDatablock;
 class SceneManager;
 class TextureGpu;
+class VertexArrayObject;
 
 }
 
@@ -33,7 +34,7 @@ struct Geometry;
 
 struct QueuedGeometry
 {
-	Geometry* geometry = nullptr;
+	Ogre::VertexArrayObject* vao = nullptr;
 	Rml::Vector2f translation;
 	Ogre::HlmsUnlitDatablock* datablock = nullptr;
 };
@@ -66,7 +67,7 @@ class RenderInterface : public Rml::RenderInterface
 	std::vector<Pass> passes;
 
 	int datablockId = 0;
-	std::vector<Rml::CompiledGeometryHandle> releaseGeometry;
+	std::vector<Rml::CompiledGeometryHandle> releaseGeometries;
 	std::vector<Rml::TextureHandle> releaseTextures;
 
 	Ogre::SceneManager* sceneManager = nullptr;
@@ -83,7 +84,7 @@ class RenderInterface : public Rml::RenderInterface
 	void clearWorkspace();
 	void populateWorkspace();
 
-	void releaseBufferedGeometry();
+	void releaseBufferedGeometries();
 	void releaseBufferedTextures();
 
 public:

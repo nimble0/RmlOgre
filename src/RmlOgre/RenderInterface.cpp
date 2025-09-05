@@ -2,7 +2,7 @@
 
 #include "CompositorPassGeometry.hpp"
 #include "CompositorPassGeometryDef.hpp"
-#include "Geometry.hpp"
+#include "geometry.hpp"
 
 #include <Compositor/OgreCompositorManager2.h>
 #include <Compositor/OgreCompositorNode.h>
@@ -17,6 +17,8 @@
 #include <OgreRoot.h>
 #include <OgreTextureFilters.h>
 #include <OgreTextureGpuManager.h>
+#include <Vao/OgreVaoManager.h>
+#include <Vao/OgreVertexArrayObject.h>
 
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/Context.h>
@@ -204,7 +206,7 @@ void RenderInterface::populateWorkspace()
 				RenderObject::RENDER_QUEUE_ID
 			);
 			auto& object = this->renderObjects.back();
-			object.setVao(queueObject.geometry->vao);
+			object.setVao(queueObject.vao);
 			object.setDatablock(queueObject.datablock);
 
 			this->sceneNodes.emplace_back(
@@ -251,11 +253,24 @@ void RenderInterface::populateWorkspace()
 	}
 }
 
-void RenderInterface::releaseBufferedGeometry()
+void RenderInterface::releaseBufferedGeometries()
 {
-	for(Rml::CompiledGeometryHandle geometry : this->releaseGeometry)
-		std::unique_ptr<Geometry>(reinterpret_cast<Geometry*>(geometry));
-	this->releaseGeometry.clear();
+	Ogre::Root& root = Ogre::Root::getSingleton();
+	Ogre::RenderSystem* renderSystem = root.getRenderSystem();
+	Ogre::VaoManager* vaoManager = renderSystem->getVaoManager();
+
+	for(Rml::CompiledGeometryHandle geometry : this->releaseGeometries)
+	{
+		auto* vao = reinterpret_cast<Ogre::VertexArrayObject*>(geometry);
+
+		for(auto* buffer : vao->getVertexBuffers())
+			vaoManager->destroyVertexBuffer(buffer);
+
+		if(vao->getIndexBuffer())
+			vaoManager->destroyIndexBuffer(vao->getIndexBuffer());
+		vaoManager->destroyVertexArrayObject(vao);
+	}
+	this->releaseGeometries.clear();
 }
 
 void RenderInterface::releaseBufferedTextures()
@@ -281,7 +296,7 @@ void RenderInterface::releaseBufferedTextures()
 void RenderInterface::BeginFrame()
 {
 	this->clearWorkspace();
-	this->releaseBufferedGeometry();
+	this->releaseBufferedGeometries();
 	this->releaseBufferedTextures();
 }
 
@@ -332,8 +347,7 @@ Rml::CompiledGeometryHandle RenderInterface::CompileGeometry(
 	Rml::Span<const Rml::Vertex> vertices,
 	Rml::Span<const int> indices)
 {
-	auto geometry = std::make_unique<Geometry>(vertices, indices);
-	return reinterpret_cast<Rml::CompiledGeometryHandle>(geometry.release());
+	return reinterpret_cast<Rml::CompiledGeometryHandle>(create_vao(vertices, indices));
 }
 void RenderInterface::RenderGeometry(
 	Rml::CompiledGeometryHandle geometry,
@@ -341,14 +355,14 @@ void RenderInterface::RenderGeometry(
 	Rml::TextureHandle texture)
 {
 	this->passes.back().queue.push_back({
-		reinterpret_cast<Geometry*>(geometry),
+		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 		translation,
 		texture ? reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture) : this->noTextureDatablock
 	});
 }
 void RenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry)
 {
-	this->releaseGeometry.push_back(geometry);
+	this->releaseGeometries.push_back(geometry);
 }
 
 Rml::TextureHandle RenderInterface::LoadTexture(
