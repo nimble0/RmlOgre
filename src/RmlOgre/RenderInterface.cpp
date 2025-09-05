@@ -49,10 +49,10 @@ RenderInterface::RenderInterface(
 	this->samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
 	this->samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
 
-	this->noTextureDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+	auto* noTextureDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(
 		this->hlms->getDatablock("NoTexture"));
-	if(!this->noTextureDatablock)
-		this->noTextureDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+	if(!noTextureDatablock)
+		noTextureDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(
 			this->hlms->createDatablock(
 				"NoTexture",
 				"NoTexture",
@@ -60,7 +60,10 @@ RenderInterface::RenderInterface(
 				this->blendblock,
 				Ogre::HlmsParamVec())
 		);
-	this->noTextureDatablock->setUseColour(true);
+	noTextureDatablock->setUseColour(true);
+	Material noTextureMaterial{nullptr, noTextureDatablock};
+	noTextureMaterial.calculateHlmsHash();
+	this->materials.insert(std::move(noTextureMaterial));
 
 	this->AddFilterMaker("blur", std::make_unique<BlurFilterMaker>());
 	this->AddFilterMaker("drop-shadow", std::make_unique<DropShadowFilterMaker>());
@@ -107,15 +110,17 @@ void RenderInterface::releaseBufferedTextures()
 
 	for(Rml::TextureHandle texture : this->releaseTextures)
 	{
-		auto* datablock = reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture);
+		auto& material = this->materials.at(texture);
+		auto* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(material.datablock);
 		auto* textureGpu = datablock->getTexture(0);
 
-		for(auto* r : datablock->getLinkedRenderables())
-			r->setDatablock(this->noTextureDatablock);
+		assert(datablock->getLinkedRenderables().empty());
 
 		this->hlms->destroyDatablock(datablock->getName());
 		if(!this->workspace.freeRenderTexture(textureGpu))
 			textureManager.destroyTexture(textureGpu);
+
+		this->materials.erase(texture);
 	}
 	this->releaseTextures.clear();
 
@@ -222,11 +227,13 @@ void RenderInterface::RenderGeometry(
 	else
 		queue = &this->getRenderPass<RenderPass>().queue;
 
+	auto& material = this->materials.at(texture);
+	if(material.needsHashing())
+		material.calculateHlmsHash();
 	queue->push_back({
 		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 		translation,
-		texture ? reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture) : this->noTextureDatablock,
-		nullptr
+		material
 	});
 }
 void RenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry)
@@ -269,7 +276,10 @@ Rml::TextureHandle RenderInterface::LoadTexture(
 	datablock->setTexture(0, texture, &this->samplerblock);
 	datablock->setUseColour(true);
 
-	return reinterpret_cast<Rml::TextureHandle>(datablock);
+	auto material = Material{nullptr, datablock};
+	material.calculateHlmsHash();
+	auto handle = this->materials.insert(std::move(material));
+	return handle;
 }
 Rml::TextureHandle RenderInterface::GenerateTexture(
 	Rml::Span<const Rml::byte> source,
@@ -320,7 +330,10 @@ Rml::TextureHandle RenderInterface::GenerateTexture(
 	datablock->setTexture(0, texture, &this->samplerblock);
 	datablock->setUseColour(true);
 
-	return reinterpret_cast<Rml::TextureHandle>(datablock);
+	auto material = Material{nullptr, datablock};
+	material.calculateHlmsHash();
+	auto handle = this->materials.insert(std::move(material));
+	return handle;
 }
 void RenderInterface::ReleaseTexture(Rml::TextureHandle texture)
 {
@@ -374,24 +387,21 @@ void RenderInterface::RenderToClipMask(
 		this->getRenderPass<RenderToStencilSetPass>().queue.push_back({
 			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 			translation,
-			this->noTextureDatablock,
-			nullptr
+			this->materials[0]
 		});
 		break;
 	case Rml::ClipMaskOperation::SetInverse:
 		this->getRenderPass<RenderToStencilSetInversePass>().queue.push_back({
 			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 			translation,
-			this->noTextureDatablock,
-			nullptr
+			this->materials[0]
 		});
 		break;
 	case Rml::ClipMaskOperation::Intersect:
 		this->getRenderPass<RenderToStencilIntersectPass>().queue.push_back({
 			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 			translation,
-			this->noTextureDatablock,
-			nullptr
+			this->materials[0]
 		});
 		break;
 	}
@@ -588,7 +598,10 @@ Rml::TextureHandle RenderInterface::SaveLayerAsTexture()
 
 	this->passes.push_back(RenderToTexturePass(renderTexture.second, this->renderPassSettings));
 
-	return reinterpret_cast<Rml::TextureHandle>(datablock);
+	auto material = Material{nullptr, datablock};
+	material.calculateHlmsHash();
+	auto handle = this->materials.insert(std::move(material));
+	return handle;
 }
 
 Rml::CompiledFilterHandle RenderInterface::SaveLayerAsMaskImage()
@@ -637,7 +650,11 @@ Rml::CompiledShaderHandle RenderInterface::CompileShader(
 		return {};
 
 	auto shader = maker->second->make(parameters);
-	auto handle = this->shaders.insert(std::move(shader));
+	shader->setMacroblock(this->macroblock);
+	shader->setBlendblock(this->blendblock);
+	auto material = Material{shader};
+	material.calculateHlmsHash();
+	auto handle = this->shaders.insert(std::move(material));
 	return handle;
 }
 void RenderInterface::RenderShader(
@@ -647,6 +664,8 @@ void RenderInterface::RenderShader(
 	Rml::TextureHandle texture)
 {
 	auto& material = this->shaders.at(shader);
+	if(material.needsHashing())
+		material.calculateHlmsHash();
 
 	std::vector<QueuedGeometry>* queue = nullptr;
 	if(this->renderPassSettings.enableStencil)
@@ -657,7 +676,6 @@ void RenderInterface::RenderShader(
 	queue->push_back({
 		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 		translation,
-		nullptr,
 		material
 	});
 }

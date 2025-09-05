@@ -43,6 +43,7 @@ target_sources(RmlOgre
 		src/RmlOgre/Compositor/CompositorPassRenderQuadDef.cpp
 		src/RmlOgre/BaseRenderPass.cpp
 		src/RmlOgre/FilterMaker.cpp
+		src/RmlOgre/Material.cpp
 		src/RmlOgre/NodeConnectionMap.cpp
 		src/RmlOgre/Pass.cpp
 		src/RmlOgre/RenderInterface.cpp

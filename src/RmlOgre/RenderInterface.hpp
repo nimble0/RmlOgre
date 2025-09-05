@@ -2,8 +2,8 @@
 #define NIMBLE_RMLOGRE_RENDERINTERFACE_HPP
 
 #include "FilterMaker.hpp"
+#include "Material.hpp"
 #include "ObjectIndex.hpp"
-#include "RenderObject.hpp"
 #include "ShaderMaker.hpp"
 #include "Workspace.hpp"
 #include "filters.hpp"
@@ -48,14 +48,14 @@ class RenderInterface : public Rml::RenderInterface
 	Ogre::HlmsMacroblock macroblock;
 	Ogre::HlmsBlendblock blendblock;
 	Ogre::HlmsSamplerblock samplerblock;
-	Ogre::HlmsUnlitDatablock* noTextureDatablock;
+	ObjectIndex<Material> materials;
 
 	std::unordered_map<Rml::String, std::unique_ptr<FilterMaker>> filterMakers;
 	MaskImageFilterMaker maskImageFilterMaker;
 	ObjectIndex<std::unique_ptr<Filter>> filters;
 
 	std::unordered_map<Rml::String, std::unique_ptr<ShaderMaker>> shaderMakers;
-	ObjectIndex<Ogre::MaterialPtr> shaders;
+	ObjectIndex<Material> shaders;
 
 	RenderPassSettings renderPassSettings;
 	int connectionId = 0;
