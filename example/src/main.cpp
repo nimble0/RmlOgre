@@ -27,7 +27,7 @@
 #include <cstring>
 
 
-static void registerHlms(Ogre::ConfigFile& cf, const Ogre::String& resourcePath)
+static void register_hlms(Ogre::ConfigFile& cf, const Ogre::String& resourcePath)
 {
 	using namespace Ogre;
 
@@ -90,7 +90,7 @@ static void registerHlms(Ogre::ConfigFile& cf, const Ogre::String& resourcePath)
 	Root::getSingleton().getHlmsManager()->useDefaultDatablockFrom(HlmsTypes::HLMS_UNLIT);
 }
 
-void addResourceLocation(
+void add_resource_location(
 	const Ogre::String &archName,
 	const Ogre::String &typeName,
 	const Ogre::String &secName)
@@ -106,7 +106,7 @@ void addResourceLocation(
 #endif
 }
 
-void setupResources(Ogre::ConfigFile& cf)
+void setup_resources(Ogre::ConfigFile& cf)
 {
 	// Go through all sections & settings in the file
 	Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
@@ -123,7 +123,7 @@ void setupResources(Ogre::ConfigFile& cf)
 			{
 				typeName = i->first;
 				archName = i->second;
-				addResourceLocation(archName, typeName, secName);
+				add_resource_location(archName, typeName, secName);
 			}
 		}
 	}
@@ -254,8 +254,8 @@ int main( int argc, const char *argv[] )
 	ConfigFile cf;
 	cf.load(resourcePath + "resources.cfg");
 
-	registerHlms(cf, resourcePath);
-	setupResources(cf);
+	register_hlms(cf, resourcePath);
+	setup_resources(cf);
 	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups(true);
 
 	Rml::Initialise();
