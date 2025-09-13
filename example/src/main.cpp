@@ -321,6 +321,7 @@ int main( int argc, const char *argv[] )
 		if(!bQuit)
 		{
 			context->Update();
+			renderInterface.BeginFrame();
 			context->Render();
 			renderInterface.EndFrame();
 			bQuit |= !root->renderOneFrame();

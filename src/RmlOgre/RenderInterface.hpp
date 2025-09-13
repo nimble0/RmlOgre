@@ -80,6 +80,7 @@ class RenderInterface : public Rml::RenderInterface
 	std::vector<RenderObject, Ogre::STLAllocator<RenderObject, Ogre::AlignAllocPolicy<>>> renderObjects;
 
 	void buildWorkspace(std::size_t numGeometryNodes);
+	void clearWorkspace();
 	void populateWorkspace();
 
 	void releaseBufferedGeometry();
@@ -91,8 +92,7 @@ public:
 		Ogre::SceneManager* sceneManager,
 		Rml::Vector2i resolution);
 
-	// Added for consistency with other render interfaces
-	void BeginFrame() {}
+	void BeginFrame();
 	void EndFrame();
 
 	void SetViewport(Rml::Vector2i dimensions);

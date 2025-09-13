@@ -124,6 +124,22 @@ void RenderInterface::buildWorkspace(std::size_t numGeometryNodes)
 	this->workspaceDef->clearAllInterNodeConnections();
 }
 
+void RenderInterface::clearWorkspace()
+{
+	for(auto& node : this->geometryNodes)
+	{
+		auto& passes = node->_getPasses();
+		if(passes.size() >= 1)
+		{
+			auto* nodePass = static_cast<CompositorPassGeometry*>(passes.at(0));
+			nodePass->renderQueue->clear();
+		}
+	}
+
+	this->sceneNodes.clear();
+	this->renderObjects.clear();
+}
+
 void RenderInterface::populateWorkspace()
 {
 	if(this->passes.size() > geometryNodes.size())
@@ -135,27 +151,13 @@ void RenderInterface::populateWorkspace()
 	}
 	this->workspaceDef->clearAllInterNodeConnections();
 
-	for(auto& node : this->geometryNodes)
-	{
-		auto& passes = node->_getPasses();
-		if(passes.size() >= 1)
-		{
-			auto* nodePass = static_cast<CompositorPassGeometry*>(passes.at(0));
-			nodePass->renderQueue->clear();
-		}
-	}
 
 	std::size_t totalRenderObjects = 0;
 	for(auto& pass : passes)
 		totalRenderObjects += pass.queue.size();
 
-	this->sceneNodes.clear();
 	this->sceneNodes.reserve(totalRenderObjects);
-	this->renderObjects.clear();
 	this->renderObjects.reserve(totalRenderObjects);
-
-	this->releaseBufferedGeometry();
-	this->releaseBufferedTextures();
 
 
 	// Connect required nodes in workspace, which creates passes
@@ -273,6 +275,14 @@ void RenderInterface::releaseBufferedTextures()
 		textureManager.destroyTexture(textureGpu);
 	}
 	this->releaseTextures.clear();
+}
+
+
+void RenderInterface::BeginFrame()
+{
+	this->clearWorkspace();
+	this->releaseBufferedGeometry();
+	this->releaseBufferedTextures();
 }
 
 void RenderInterface::EndFrame()
