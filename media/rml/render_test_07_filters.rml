@@ -1,0 +1,77 @@
+<rml>
+	<head>
+		<style>
+			body
+			{
+				width: 100%;
+				height: 100%;
+
+				font-family: "LatoLatin";
+			}
+
+			.box
+			{
+				display: inline-block;
+				width: 128px;
+				height: 128px;
+				margin: 10px;
+				border: 1px #000;
+
+				decorator: image(reference.png cover);
+			}
+
+			.blur
+			{
+				filter: blur(10.0px);
+			}
+			.brightness
+			{
+				filter: brightness(2.0);
+			}
+			.contrast
+			{
+				filter: contrast(2.0);
+			}
+			.drop-shadow
+			{
+				filter: drop-shadow(#f00 20px 20px 5px);
+			}
+			.grayscale
+			{
+				filter: grayscale(1.0);
+			}
+			.hue-rotate
+			{
+				filter: hue-rotate(90deg);
+			}
+			.invert
+			{
+				filter: invert(1);
+			}
+			.opacity
+			{
+				filter: opacity(0.5);
+			}
+			.saturate
+			{
+				filter: saturate(2.0);
+			}
+			.sepia
+			{
+				filter: sepia(1.0);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="box blur" />
+		<div class="box brightness" />
+		<div class="box contrast" />
+		<div class="box drop-shadow" />
+		<div class="box grayscale" />
+		<div class="box hue-rotate" />
+		<div class="box invert" />
+		<div class="box opacity" />
+		<div class="box saturate" />
+		<div class="box sepia" />
+	</body>
+</rml>

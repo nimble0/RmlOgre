@@ -42,10 +42,12 @@ target_sources(RmlOgre
 		src/RmlOgre/Compositor/CompositorPassRenderQuad.cpp
 		src/RmlOgre/Compositor/CompositorPassRenderQuadDef.cpp
 		src/RmlOgre/BaseRenderPass.cpp
+		src/RmlOgre/FilterMaker.cpp
 		src/RmlOgre/Pass.cpp
 		src/RmlOgre/RenderInterface.cpp
 		src/RmlOgre/RenderObject.cpp
 		src/RmlOgre/Workspace.cpp
+		src/RmlOgre/filters.cpp
 		src/RmlOgre/geometry.cpp
 )
 

@@ -2,6 +2,7 @@
 
 #include "Compositor/CompositorPassGeometry.hpp"
 #include "Compositor/CompositorPassGeometryDef.hpp"
+#include "filters.hpp"
 #include "geometry.hpp"
 
 #include <Compositor/OgreCompositorManager2.h>
@@ -60,6 +61,18 @@ RenderInterface::RenderInterface(
 				Ogre::HlmsParamVec())
 		);
 	this->noTextureDatablock->setUseColour(true);
+
+	this->AddFilterMaker("blur", std::make_unique<BlurFilterMaker>());
+	this->AddFilterMaker("drop-shadow", std::make_unique<DropShadowFilterMaker>());
+	this->AddFilterMaker("opacity", std::make_unique<OpacityFilterMaker>());
+	this->AddFilterMaker("brightness", std::make_unique<BrightnessFilterMaker>());
+	this->AddFilterMaker("contrast", std::make_unique<ContrastFilterMaker>());
+	this->AddFilterMaker("invert", std::make_unique<InvertFilterMaker>());
+	this->AddFilterMaker("grayscale", std::make_unique<GrayscaleFilterMaker>());
+	this->AddFilterMaker("sepia", std::make_unique<SepiaFilterMaker>());
+	this->AddFilterMaker("hue-rotate", std::make_unique<HueRotateFilterMaker>());
+	this->AddFilterMaker("saturate", std::make_unique<SaturateFilterMaker>());
+	this->filters.insert({});
 }
 
 void RenderInterface::releaseBufferedGeometries()
@@ -117,6 +130,18 @@ void RenderInterface::EndFrame()
 	this->layerBuffers.clear();
 	this->renderPassSettings = RenderPassSettings{};
 	this->connectionId = 0;
+}
+
+
+void RenderInterface::AddFilterMaker(Rml::String name, std::unique_ptr<FilterMaker> filterMaker)
+{
+	this->filterMakers.emplace(std::move(name), std::move(filterMaker));
+}
+
+
+void RenderInterface::addPass(Pass&& pass)
+{
+	this->passes.push_back(std::move(pass));
 }
 
 
@@ -365,7 +390,8 @@ void RenderInterface::CompositeLayers(
 		this->layerBuffers.at(source) = sourceLayer;
 
 
-	// Apply filters
+	for(auto filter : filters)
+		this->filters.at(filter)->apply(*this);
 
 
 	if(this->renderPassSettings.enableStencil)
@@ -390,4 +416,24 @@ void RenderInterface::PopLayer()
 {
 	this->passes.push_back({SwapPass(this->layerBuffers.back())});
 	this->layerBuffers.pop_back();
+}
+
+
+Rml::CompiledFilterHandle RenderInterface::CompileFilter(
+	const Rml::String& name,
+	const Rml::Dictionary& parameters)
+{
+	auto maker = this->filterMakers.find(name);
+	if(maker == this->filterMakers.end())
+			return {};
+
+	auto filter = maker->second->make(parameters);
+	auto handle = this->filters.insert(std::move(filter));
+	return handle;
+}
+void RenderInterface::ReleaseFilter(Rml::CompiledFilterHandle filter)
+{
+	auto& compiledFilter = this->filters.at(filter);
+	compiledFilter->release(*this);
+	this->filters.erase(filter);
 }

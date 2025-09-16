@@ -230,6 +230,11 @@ struct CompositeWithStencilPass : CompositePass
 	}
 };
 
+struct ClearSecondaryPass : BasePass
+{
+	static constexpr const char* BASE_NODE_NAME = "Rml/ClearSecondary";
+};
+
 using Pass = std::variant<
 	NullPass,
 	RenderPass,
@@ -241,7 +246,9 @@ using Pass = std::variant<
 	SwapPass,
 	CopyPass,
 	CompositePass,
-	CompositeWithStencilPass
+	CompositeWithStencilPass,
+	RenderQuadPass,
+	ClearSecondaryPass
 >;
 
 }

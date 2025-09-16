@@ -1,6 +1,8 @@
 #ifndef NIMBLE_RMLOGRE_RENDERINTERFACE_HPP
 #define NIMBLE_RMLOGRE_RENDERINTERFACE_HPP
 
+#include "FilterMaker.hpp"
+#include "ObjectIndex.hpp"
 #include "RenderObject.hpp"
 #include "Workspace.hpp"
 
@@ -28,6 +30,9 @@ class RenderInterface : public Rml::RenderInterface
 	Ogre::HlmsBlendblock blendblock;
 	Ogre::HlmsSamplerblock samplerblock;
 	Ogre::HlmsUnlitDatablock* noTextureDatablock;
+
+	std::unordered_map<Rml::String, std::unique_ptr<FilterMaker>> filterMakers;
+	ObjectIndex<std::unique_ptr<Filter>> filters;
 
 	RenderPassSettings renderPassSettings;
 	int connectionId = 0;
@@ -70,6 +75,11 @@ public:
 
 	int addConnection() { return this->connectionId++; }
 
+	const RenderPassSettings& currentRenderPassSettings() const { return this->renderPassSettings; }
+	void addPass(Pass&& pass);
+
+
+	void AddFilterMaker(Rml::String name, std::unique_ptr<FilterMaker> filterMaker);
 
 	void BeginFrame();
 	void EndFrame();
@@ -115,6 +125,12 @@ public:
 		Rml::Span<const Rml::CompiledFilterHandle> filters
 	) override;
 	void PopLayer() override;
+
+	Rml::CompiledFilterHandle CompileFilter(
+		const Rml::String& name,
+		const Rml::Dictionary& parameters
+	) override;
+	void ReleaseFilter(Rml::CompiledFilterHandle filter) override;
 };
 
 }
