@@ -31,20 +31,17 @@ void BlurFilter::apply(RenderInterface& renderInterface)
 	RenderPassSettings passSettings = renderInterface.currentRenderPassSettings();
 	if(this->halfSamples > 0)
 	{
+		passSettings.scissorRegion.p0 /= 2;
+		renderInterface.addPass(RenderQuadPass(this->halfsample, passSettings));
 		for(int i = 0; i < this->halfSamples - 1; ++i)
 		{
 			passSettings.scissorRegion.p0 /= 2;
 			passSettings.scissorRegion.p1 = (passSettings.scissorRegion.p1 + Rml::Vector2i{1, 1}) / 2;
 			renderInterface.addPass(RenderQuadPass(this->halfsample, passSettings));
 		}
-		renderInterface.addPass(ClearSecondaryPass());
-		passSettings.scissorRegion.p0 /= 2;
-		passSettings.scissorRegion.p1 = (passSettings.scissorRegion.p1 + Rml::Vector2i{1, 1}) / 2;
-		renderInterface.addPass(RenderQuadPass(this->halfsample, passSettings));
 	}
 	passSettings.scissorRegion.p0.x = renderInterface.currentRenderPassSettings().scissorRegion.p0.x;
-	passSettings.scissorRegion.p1.x = renderInterface.currentRenderPassSettings().scissorRegion.p1.x;
-	renderInterface.addPass(ClearSecondaryPass());
+	passSettings.scissorRegion.p1 = renderInterface.currentRenderPassSettings().scissorRegion.p1;
 	renderInterface.addPass(RenderQuadPass(this->blurH, passSettings));
 	renderInterface.addPass(RenderQuadPass(this->blurV, renderInterface.currentRenderPassSettings()));
 }
