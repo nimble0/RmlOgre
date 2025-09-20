@@ -92,6 +92,11 @@ void CompositorPassGeometry::setRenderPassDescToCurrent()
 	scissorRegion_.z *= vpModifier.z;
 	scissorRegion_.w *= vpModifier.w;
 
+	scissorRegion_.x = std::clamp(scissorRegion_.x, 0.0f, 1.0f);
+	scissorRegion_.y = std::clamp(scissorRegion_.y, 0.0f, 1.0f);
+	scissorRegion_.z = std::clamp(scissorRegion_.z, 0.0f, 1.0f);
+	scissorRegion_.w = std::clamp(scissorRegion_.w, 0.0f, 1.0f);
+
 	for( size_t i = 0; i < numViewports; ++i )
 	{
 		Real left = mDefinition->mVpRect[i].mVpLeft + vpModifier.x;
