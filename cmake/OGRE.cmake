@@ -54,7 +54,7 @@ macro( findPluginAndSetPath BUILD_TYPE CFG_VARIABLE LIBRARY_NAME )
 		endif()
 
 		# Copy the DLLs to the folders.
-		copyWithSymLink( ${REAL_LIB_PATH} "${CMAKE_SOURCE_DIR}/bin/${BUILD_TYPE}/Plugins" )
+		copyWithSymLink( ${REAL_LIB_PATH} "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}/Plugins" )
 	endif()
 endmacro()
 
@@ -124,7 +124,7 @@ macro( setupPluginFileFromTemplate BUILD_TYPE OGRE_USE_SCENE_FORMAT OGRE_USE_PLA
 	# On non-Windows machines, we can only do Plugins for the current build.
 	if( WIN32 OR OGRE_BUILD_TYPE_MATCHES )
 		if( NOT APPLE )
-			file( MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/${BUILD_TYPE}/Plugins" )
+			file( MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}/Plugins" )
 		endif()
 
 		findPluginAndSetPath( ${BUILD_TYPE} OGRE_PLUGIN_RS_D3D11	RenderSystem_Direct3D11 )
@@ -133,14 +133,14 @@ macro( setupPluginFileFromTemplate BUILD_TYPE OGRE_USE_SCENE_FORMAT OGRE_USE_PLA
 
 		if( ${BUILD_TYPE} STREQUAL "Debug" )
 			configure_file( ${CMAKE_SOURCE_DIR}/CMake/Templates/Plugins.cfg.in
-							${CMAKE_SOURCE_DIR}/bin/${BUILD_TYPE}/plugins_d.cfg )
+							${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}/plugins_d.cfg )
 		else()
 			configure_file( ${CMAKE_SOURCE_DIR}/CMake/Templates/Plugins.cfg.in
-							${CMAKE_SOURCE_DIR}/bin/${BUILD_TYPE}/plugins.cfg )
+							${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}/plugins.cfg )
 		endif()
 
 		# Copy
-		# "${OGRE_BINARIES}/bin/${BUILD_TYPE}/OgreMain.dll" to "${CMAKE_SOURCE_DIR}/bin/${BUILD_TYPE}
+		# "${OGRE_BINARIES}/bin/${BUILD_TYPE}/OgreMain.dll" to "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}
 		# and the other DLLs as well.
 
 		# Lists of DLLs to copy
@@ -191,7 +191,7 @@ macro( setupPluginFileFromTemplate BUILD_TYPE OGRE_USE_SCENE_FORMAT OGRE_USE_PLA
 		if( EXISTS "${OGRE_DLL_PATH}/${DLL_OS_PREFIX}${DLL_NAME}${DLL_OS_SUFFIX}" )
 			foreach( DLL_NAME ${OGRE_DLLS} )
 				copyWithSymLink( "${OGRE_DLL_PATH}/${DLL_OS_PREFIX}${DLL_NAME}${DLL_OS_SUFFIX}"
-								 "${CMAKE_SOURCE_DIR}/bin/${BUILD_TYPE}" )
+								 "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}" )
 			endforeach()
 		endif()
 
@@ -207,7 +207,7 @@ endmacro()
 
 # Creates Resources.cfg out of user-editable CMake/Templates/Resources.cfg.in
 function( setupResourceFileFromTemplate )
-	message( STATUS "Generating ${CMAKE_SOURCE_DIR}/bin/Data/resources2.cfg from template
+	message( STATUS "Generating ${CMAKE_CURRENT_BINARY_DIR}/Data/resources2.cfg from template
 		${CMAKE_SOURCE_DIR}/CMake/Templates/Resources.cfg.in" )
 	if( APPLE )
 		set( OGRE_MEDIA_DIR "Contents/Resources" )
@@ -216,7 +216,7 @@ function( setupResourceFileFromTemplate )
 	else()
 		set( OGRE_MEDIA_DIR ".." )
 	endif()
-	configure_file( ${CMAKE_SOURCE_DIR}/CMake/Templates/Resources.cfg.in ${CMAKE_SOURCE_DIR}/bin/Data/resources2.cfg )
+	configure_file( ${CMAKE_SOURCE_DIR}/CMake/Templates/Resources.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/Data/resources2.cfg )
 endfunction()
 
 #----------------------------------------------------------------------------------------
@@ -405,13 +405,13 @@ macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
 	endif()
 
 	message( STATUS "Copying Hlms data files from Ogre repository" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/Hlms/Common"	DESTINATION "${CMAKE_SOURCE_DIR}/bin/Data/Hlms" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/Hlms/Pbs"		DESTINATION "${CMAKE_SOURCE_DIR}/bin/Data/Hlms" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/Hlms/Unlit"	DESTINATION "${CMAKE_SOURCE_DIR}/bin/Data/Hlms" )
+	file( COPY "${OGRE_SOURCE}/Samples/Media/Hlms/Common" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data/Hlms" )
+	file( COPY "${OGRE_SOURCE}/Samples/Media/Hlms/Pbs"    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data/Hlms" )
+	file( COPY "${OGRE_SOURCE}/Samples/Media/Hlms/Unlit"  DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data/Hlms" )
 
 	message( STATUS "Copying Common data files from Ogre repository" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/2.0/scripts/materials/Common"	DESTINATION "${CMAKE_SOURCE_DIR}/bin/Data/Materials" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/packs/DebugPack.zip"	DESTINATION "${CMAKE_SOURCE_DIR}/bin/Data" )
+	file( COPY "${OGRE_SOURCE}/Samples/Media/2.0/scripts/materials/Common" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data/Materials" )
+	file( COPY "${OGRE_SOURCE}/Samples/Media/packs/DebugPack.zip"          DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data" )
 
 	message( STATUS "Copying DLLs and generating Plugins.cfg for Debug" )
 	setupPluginFileFromTemplate( "Debug" ${OGRE_USE_SCENE_FORMAT} ${OGRE_USE_PLANAR_REFLECTIONS} )
