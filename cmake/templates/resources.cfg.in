@@ -1,0 +1,21 @@
+[Essential]
+Zip=@OGRE_MEDIA_DIR@/packs/DebugPack.zip
+
+[Popular]
+FileSystem=@RMLOGRE_MEDIA_DIR@/scripts/materials/Rml
+FileSystem=@RMLOGRE_MEDIA_DIR@/scripts/materials/Rml/GLSL
+FileSystem=@RMLOGRE_MEDIA_DIR@/scripts/materials/Rml/HLSL
+FileSystem=@OGRE_MEDIA_DIR@/2.0/scripts/materials/Common
+FileSystem=@OGRE_MEDIA_DIR@/2.0/scripts/materials/Common/Any
+FileSystem=@OGRE_MEDIA_DIR@/2.0/scripts/materials/Common/GLSL
+FileSystem=@OGRE_MEDIA_DIR@/2.0/scripts/materials/Common/HLSL
+FileSystem=@OGRE_MEDIA_DIR@/2.0/scripts/materials/Common/Metal
+
+FileSystem=@RMLOGRE_MEDIA_DIR@/scripts/compositors
+FileSystem=@RMLOGRE_MEDIA_DIR@/rml
+FileSystem=.
+
+# Do not load this as a resource. It's here merely to tell the code where
+# the Hlms templates are located
+[Hlms]
+DoNotUseAsResource=@OGRE_MEDIA_DIR@

@@ -6,12 +6,14 @@ include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-find_package(OGRE REQUIRED)
+find_package(OGRE-Next REQUIRED)
 find_package(RmlUi REQUIRED)
 
 
 add_library(RmlOgre)
 add_library(RmlOgre::RmlOgre ALIAS RmlOgre)
+
+set(RMLOGRE_MEDIA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/media)
 
 target_compile_features(RmlOgre PUBLIC cxx_std_17)
 target_compile_options(RmlOgre PRIVATE

@@ -1,3 +1,5 @@
+include(${PROJECT_SOURCE_DIR}/cmake/OGRE.cmake)
+
 add_executable(RmlOgreExample WIN32 src/main.cpp)
 
 target_compile_features(RmlOgreExample PUBLIC cxx_std_17)
@@ -33,19 +35,34 @@ target_link_libraries(RmlOgreExample
 	RmlOgre::RmlOgre
 )
 
-set(BIN_CFG_FILES
-	plugins.cfg
-	plugins_d.cfg
-	resources.cfg
-)
+target_compile_definitions(RmlOgreExample PRIVATE RMLOGRE_MEDIA_DIR=${RMLOGRE_MEDIA_DIR})
 
-foreach(FILE ${BIN_CFG_FILES})
-	configure_file("${PROJECT_SOURCE_DIR}/bin_cfg/${FILE}" "." COPYONLY)
+if(CMAKE_CONFIGURATION_TYPES)
+	foreach(BUILD_TYPE ${CMAKE_CONFIGURATION_TYPES})
+		message( STATUS "Copying DLLs and generating plugins.cfg for ${BUILD_TYPE}" )
+		setupPluginFileFromTemplate(
+			${OGRE-Next_DIR}
+			${PROJECT_SOURCE_DIR}/cmake/templates/plugins.cfg.in
+			${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}
+			${BUILD_TYPE}
+			false
+			false )
 
-	file(READ "${CMAKE_CURRENT_BINARY_DIR}/${FILE}" FILE_CONTENT)
-	string(REPLACE "[OGRE_PLUGIN_DIR]" ${OGRE_PLUGIN_DIR_REL} FILE_CONTENT "${FILE_CONTENT}" )
-	string(REPLACE "[OGRE_MEDIA_DIR]" ${OGRE_MEDIA_DIR} FILE_CONTENT "${FILE_CONTENT}" )
-	file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${FILE}" "${FILE_CONTENT}")
-endforeach()
+		configure_file(
+			${PROJECT_SOURCE_DIR}/cmake/templates/resources.cfg.in
+			${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}/resources.cfg )
+	endforeach()
+else()
+	message( STATUS "Copying DLLs and generating plugins.cfg for ${CMAKE_BUILD_TYPE}" )
+	setupPluginFileFromTemplate(
+		${OGRE-Next_DIR}
+		${PROJECT_SOURCE_DIR}/cmake/templates/plugins.cfg.in
+		${CMAKE_CURRENT_BINARY_DIR}
+		${CMAKE_BUILD_TYPE}
+		false
+		false )
 
-file(CREATE_LINK "${PROJECT_SOURCE_DIR}/media" "${CMAKE_CURRENT_BINARY_DIR}/media" COPY_ON_ERROR SYMBOLIC)
+	configure_file(
+		${PROJECT_SOURCE_DIR}/cmake/templates/resources.cfg.in
+		${CMAKE_CURRENT_BINARY_DIR}/resources.cfg )
+endif()

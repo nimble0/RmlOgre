@@ -27,6 +27,9 @@
 #include <cstring>
 
 
+#define Q(x) #x
+#define QUOTE(x) Q(x)
+
 static void register_hlms(Ogre::ConfigFile& cf, const Ogre::String& resourcePath)
 {
 	using namespace Ogre;
@@ -196,7 +199,7 @@ int main( int argc, const char *argv[] )
 {
 	using namespace Ogre;
 
-	const char* documentPath = "./media/rml/demo.rml";
+	const char* documentPath = QUOTE(RMLOGRE_MEDIA_DIR) "/rml/demo.rml";
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
 	if(std::strlen(strCmdLine))
 		documentPath = strCmdLine;
@@ -259,10 +262,10 @@ int main( int argc, const char *argv[] )
 	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups(true);
 
 	Rml::Initialise();
-	Rml::LoadFontFace("./media/fonts/LatoLatin-Bold.ttf");
-	Rml::LoadFontFace("./media/fonts/LatoLatin-BoldItalic.ttf");
-	Rml::LoadFontFace("./media/fonts/LatoLatin-Italic.ttf");
-	Rml::LoadFontFace("./media/fonts/LatoLatin-Regular.ttf");
+	Rml::LoadFontFace(QUOTE(RMLOGRE_MEDIA_DIR) "/fonts/LatoLatin-Bold.ttf");
+	Rml::LoadFontFace(QUOTE(RMLOGRE_MEDIA_DIR) "/fonts/LatoLatin-BoldItalic.ttf");
+	Rml::LoadFontFace(QUOTE(RMLOGRE_MEDIA_DIR) "/fonts/LatoLatin-Italic.ttf");
+	Rml::LoadFontFace(QUOTE(RMLOGRE_MEDIA_DIR) "/fonts/LatoLatin-Regular.ttf");
 
 	// Create SceneManager
 	const size_t numThreads = 1u;
