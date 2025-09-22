@@ -32,17 +32,17 @@ endfunction()
 #----------------------------------------------------------------------------------------
 
 # Finds if Ogre has been built a library with LIBRARY_NAME.dll,
-# and if so sets the string for Plugins.cfg in CFG_VARIABLE.
-macro( findPluginAndSetPath BUILD_TYPE CFG_VARIABLE LIBRARY_NAME )
+# and if so sets the string for plugins.cfg template CFG_VARIABLE.
+macro( findPluginAndSetPath SDK_DIR BIN_DIR BUILD_TYPE CFG_VARIABLE LIBRARY_NAME )
 	set( REAL_LIB_PATH ${LIBRARY_NAME} )
 	if( ${BUILD_TYPE} STREQUAL "Debug" )
 		set( REAL_LIB_PATH ${REAL_LIB_PATH}_d )
 	endif()
 
 	if( WIN32 )
-		set( REAL_LIB_PATH "${OGRE_BINARIES}/bin/${BUILD_TYPE}/${REAL_LIB_PATH}.dll" )
+		set( REAL_LIB_PATH "${SDK_DIR}/bin/${BUILD_TYPE}/${REAL_LIB_PATH}.dll" )
 	else()
-		set( REAL_LIB_PATH "${OGRE_BINARIES}/lib/${REAL_LIB_PATH}.so" )
+		set( REAL_LIB_PATH "${SDK_DIR}/lib/${OGRE_NEXT_PREFIX}/${REAL_LIB_PATH}.so" )
 	endif()
 
 	if( EXISTS ${REAL_LIB_PATH} )
@@ -54,67 +54,30 @@ macro( findPluginAndSetPath BUILD_TYPE CFG_VARIABLE LIBRARY_NAME )
 		endif()
 
 		# Copy the DLLs to the folders.
-		copyWithSymLink( ${REAL_LIB_PATH} "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}/Plugins" )
+		copyWithSymLink( ${REAL_LIB_PATH} "${BIN_DIR}/Plugins" )
 	endif()
 endmacro()
 
 #----------------------------------------------------------------------------------------
 
-# Outputs TRUE into RESULT_VARIABLE if Ogre was build as OgreNextMain.dll instead of OgreMain.dll
-macro( isOgreNext RESULT_VARIABLE )
-	if( WIN32 )
-		if( EXISTS "${OGRE_BINARIES}/bin/Debug/OgreNextMain_d.dll" OR
-			EXISTS "${OGRE_BINARIES}/bin/Release/OgreNextMain.dll" OR
-			EXISTS "${OGRE_BINARIES}/bin/RelWithDebInfo/OgreNextMain.dll" OR
-			EXISTS "${OGRE_BINARIES}/bin/MinSizeRel/OgreNextMain.dll" OR
-			EXISTS "${OGRE_BINARIES}/lib/Debug/OgreNextMainStatic_d.lib" OR
-			EXISTS "${OGRE_BINARIES}/lib/Release/OgreNextMainStatic.lib" OR
-			EXISTS "${OGRE_BINARIES}/lib/RelWithDebInfo/OgreNextMainStatic.lib" OR
-			EXISTS "${OGRE_BINARIES}/lib/MinSizeRel/OgreNextMainStatic.lib")
-			set( ${RESULT_VARIABLE} TRUE )
-		else()
-			set( ${RESULT_VARIABLE} FALSE )
-		endif()
-	elseif( APPLE )
-		if( APPLE_IOS )
-			set( APPLE_FOLDER "iphoneos" )
-		else()
-			set( APPLE_FOLDER "macosx" )
-		endif()
-		if( EXISTS "${OGRE_BINARIES}/lib/${APPLE_FOLDER}/Debug/libOgreNextMain.so" OR
-			EXISTS "${OGRE_BINARIES}/lib/${APPLE_FOLDER}/Release/libOgreNextMain.so" OR
-			EXISTS "${OGRE_BINARIES}/lib/${APPLE_FOLDER}/RelWithDebInfo/libOgreNextMain.so" OR
-			EXISTS "${OGRE_BINARIES}/lib/${APPLE_FOLDER}/MinSizeRel/libOgreNextMain.so" OR
-			EXISTS "${OGRE_BINARIES}/lib/${APPLE_FOLDER}/Debug/libOgreNextMainStatic.a" OR
-			EXISTS "${OGRE_BINARIES}/lib/${APPLE_FOLDER}/Release/libOgreNextMainStatic.a" OR
-			EXISTS "${OGRE_BINARIES}/lib/${APPLE_FOLDER}/RelWithDebInfo/libOgreNextMainStatic.a" OR
-			EXISTS "${OGRE_BINARIES}/lib/${APPLE_FOLDER}/MinSizeRel/libOgreNextMainStatic.a")
-			set( ${RESULT_VARIABLE} TRUE )
-		else()
-			set( ${RESULT_VARIABLE} FALSE )
-		endif()
-	else()
-		set( DEBUG_SUFFIX "" )
-		if( CMAKE_BUILD_TYPE )
-			if( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
-				set( DEBUG_SUFFIX "_d" )
-			endif()
-		endif()
-		if( EXISTS "${OGRE_BINARIES}/lib/libOgreNextMain${DEBUG_SUFFIX}.so" OR
-			EXISTS "${OGRE_BINARIES}/lib/libOgreNextMainStatic${DEBUG_SUFFIX}.a")
-			set( ${RESULT_VARIABLE} TRUE )
-		else()
-			set( ${RESULT_VARIABLE} FALSE )
-		endif()
-	endif()
+# Outputs TRUE into RESULT_VARIABLE if OGRE build uses next suffix
+macro( isOgreNext SDK_DIR RESULT_VARIABLE )
+	set( ${RESULT_VARIABLE} EXISTS "${OGRE_SDK}/include/OGRE-Next/OgreBuildSettings.h" )
 endmacro()
 
 #----------------------------------------------------------------------------------------
 
-# Generates Plugins.cfg file out of user-editable Plugins.cfg.in file. Will automatically disable those plugins
-# that were not built
+# Generates Plugins.cfg file out of user-editable plugins.cfg template.
+# Will automatically disable those plugins that were not built.
 # Copies all relevant DLLs: RenderSystem files, OgreOverlay, Hlms PBS & Unlit.
-macro( setupPluginFileFromTemplate BUILD_TYPE OGRE_USE_SCENE_FORMAT OGRE_USE_PLANAR_REFLECTIONS )
+macro( setupPluginFileFromTemplate
+	SDK_DIR
+	TEMPLATE_FILE
+	BIN_DIR
+	BUILD_TYPE
+	OGRE_USE_SCENE_FORMAT
+	OGRE_USE_PLANAR_REFLECTIONS
+)
 	if( CMAKE_BUILD_TYPE )
 		if( ${CMAKE_BUILD_TYPE} STREQUAL ${BUILD_TYPE} )
 			set( OGRE_BUILD_TYPE_MATCHES 1 )
@@ -124,23 +87,21 @@ macro( setupPluginFileFromTemplate BUILD_TYPE OGRE_USE_SCENE_FORMAT OGRE_USE_PLA
 	# On non-Windows machines, we can only do Plugins for the current build.
 	if( WIN32 OR OGRE_BUILD_TYPE_MATCHES )
 		if( NOT APPLE )
-			file( MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}/Plugins" )
+			file( MAKE_DIRECTORY "${BIN_DIR}/Plugins" )
 		endif()
 
-		findPluginAndSetPath( ${BUILD_TYPE} OGRE_PLUGIN_RS_D3D11	RenderSystem_Direct3D11 )
-		findPluginAndSetPath( ${BUILD_TYPE} OGRE_PLUGIN_RS_GL3PLUS	RenderSystem_GL3Plus )
-		findPluginAndSetPath( ${BUILD_TYPE} OGRE_PLUGIN_RS_VULKAN	RenderSystem_Vulkan )
+		findPluginAndSetPath( ${SDK_DIR} ${BIN_DIR} ${BUILD_TYPE} OGRE_PLUGIN_RS_D3D11   RenderSystem_Direct3D11 )
+		findPluginAndSetPath( ${SDK_DIR} ${BIN_DIR} ${BUILD_TYPE} OGRE_PLUGIN_RS_GL3PLUS RenderSystem_GL3Plus )
+		findPluginAndSetPath( ${SDK_DIR} ${BIN_DIR} ${BUILD_TYPE} OGRE_PLUGIN_RS_VULKAN  RenderSystem_Vulkan )
 
 		if( ${BUILD_TYPE} STREQUAL "Debug" )
-			configure_file( ${CMAKE_SOURCE_DIR}/CMake/Templates/Plugins.cfg.in
-							${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}/plugins_d.cfg )
+			configure_file( ${TEMPLATE_FILE} ${BIN_DIR}/plugins_d.cfg )
 		else()
-			configure_file( ${CMAKE_SOURCE_DIR}/CMake/Templates/Plugins.cfg.in
-							${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}/plugins.cfg )
+			configure_file( ${TEMPLATE_FILE} ${BIN_DIR}/plugins.cfg )
 		endif()
 
 		# Copy
-		# "${OGRE_BINARIES}/bin/${BUILD_TYPE}/OgreMain.dll" to "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}
+		# "${OGRE_SDK}/bin/${BUILD_TYPE}/OgreMain.dll" to "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}
 		# and the other DLLs as well.
 
 		# Lists of DLLs to copy
@@ -181,9 +142,9 @@ macro( setupPluginFileFromTemplate BUILD_TYPE OGRE_USE_SCENE_FORMAT OGRE_USE_PLA
 		# On Windows DLLs are in build/bin/Debug & build/bin/Release;
 		# On Linux DLLs are in build/Debug/lib.
 		if( WIN32 )
-			set( OGRE_DLL_PATH "${OGRE_BINARIES}/bin/${BUILD_TYPE}" )
+			set( OGRE_DLL_PATH "${OGRE_SDK}/bin/${BUILD_TYPE}" )
 		else()
-			set( OGRE_DLL_PATH "${OGRE_BINARIES}/lib" )
+			set( OGRE_DLL_PATH "${OGRE_SDK}/lib" )
 		endif()
 
 		# Do not copy anything if we don't find OgreMain.dll (likely Ogre was not build)
@@ -191,7 +152,7 @@ macro( setupPluginFileFromTemplate BUILD_TYPE OGRE_USE_SCENE_FORMAT OGRE_USE_PLA
 		if( EXISTS "${OGRE_DLL_PATH}/${DLL_OS_PREFIX}${DLL_NAME}${DLL_OS_SUFFIX}" )
 			foreach( DLL_NAME ${OGRE_DLLS} )
 				copyWithSymLink( "${OGRE_DLL_PATH}/${DLL_OS_PREFIX}${DLL_NAME}${DLL_OS_SUFFIX}"
-								 "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_TYPE}" )
+				                 "${BIN_DIR}" )
 			endforeach()
 		endif()
 
@@ -206,9 +167,8 @@ endmacro()
 #----------------------------------------------------------------------------------------
 
 # Creates Resources.cfg out of user-editable CMake/Templates/Resources.cfg.in
-function( setupResourceFileFromTemplate )
-	message( STATUS "Generating ${CMAKE_CURRENT_BINARY_DIR}/Data/resources2.cfg from template
-		${CMAKE_SOURCE_DIR}/CMake/Templates/Resources.cfg.in" )
+function( setupResourceFileFromTemplate TEMPLATE_FILE OUTPUT_FILE )
+	message( STATUS "Generating ${OUTPUT_FILE} from template ${TEMPLATE_FILE}" )
 	if( APPLE )
 		set( OGRE_MEDIA_DIR "Contents/Resources" )
 	elseif( ANDROID )
@@ -216,7 +176,7 @@ function( setupResourceFileFromTemplate )
 	else()
 		set( OGRE_MEDIA_DIR ".." )
 	endif()
-	configure_file( ${CMAKE_SOURCE_DIR}/CMake/Templates/Resources.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/Data/resources2.cfg )
+	configure_file( ${TEMPLATE_FILE} ${OUTPUT_FILE} )
 endfunction()
 
 #----------------------------------------------------------------------------------------
@@ -233,54 +193,36 @@ endfunction()
 #----------------------------------------------------------------------------------------
 
 # Main call to setup Ogre.
-macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
-	OGRE_USE_SCENE_FORMAT OGRE_USE_PLANAR_REFLECTIONS )
+macro( setupOgre OGRE_SDK, OGRE_USE_SCENE_FORMAT, OGRE_USE_PLANAR_REFLECTIONS )
 
-	set( CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Dependencies/Ogre/CMake/Packages" )
-
-	# Guess the paths.
-	set( OGRE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Dependencies/Ogre" CACHE STRING "Path to OGRE-Next source code (see http://www.ogre3d.org/tikiwiki/tiki-index.php?page=CMake+Quick+Start+Guide)" )
-	if( WIN32 )
-		set( OGRE_BINARIES "${OGRE_SOURCE}/build" CACHE STRING "Path to OGRE-Next's build folder generated by CMake" )
-		link_directories( "${OGRE_BINARIES}/lib/$(ConfigurationName)" )
-	elseif( APPLE )
-		set( OGRE_BINARIES "${OGRE_SOURCE}/build" CACHE STRING "Path to OGRE-Next's build folder generated by CMake" )
-		link_directories( "${OGRE_BINARIES}/lib/$(PLATFORM_NAME)/$(CONFIGURATION)" )
-	elseif( ANDROID )
-		set( OGRE_BINARIES "${OGRE_SOURCE}/build/Android/${CMAKE_BUILD_TYPE}" CACHE STRING "Path to OGRE-Next's build folder generated by CMake" )
-		link_directories( "${OGRE_BINARIES}/lib" )
-	else()
-		set( OGRE_BINARIES "${OGRE_SOURCE}/build/${CMAKE_BUILD_TYPE}" CACHE STRING "Path to OGRE-Next's build folder generated by CMake" )
-		link_directories( "${OGRE_BINARIES}/lib" )
-	endif()
-
-	isOgreNext( OGRE_USE_NEW_NAME )
+	isOgreNext( OGRE_SDK, OGRE_USE_NEW_NAME )
 	if( ${OGRE_USE_NEW_NAME} )
 		set( OGRE_NEXT "OgreNext" )
+		set( OGRE_NEXT_PREFIX "OGRE-Next" )
 	else()
 		set( OGRE_NEXT "Ogre" )
+		set( OGRE_NEXT_PREFIX "OGRE" )
 	endif()
 	message( STATUS "OgreNext lib name prefix is ${OGRE_NEXT}" )
 
-	# Ogre config
-	include_directories( "${OGRE_SOURCE}/OgreMain/include" )
-
-	# Ogre includes
-	include_directories( "${OGRE_BINARIES}/include" )
-	include_directories( "${OGRE_SOURCE}/Components/Hlms/Common/include" )
-	include_directories( "${OGRE_SOURCE}/Components/Hlms/Unlit/include" )
-	include_directories( "${OGRE_SOURCE}/Components/Hlms/Pbs/include" )
-	include_directories( "${OGRE_SOURCE}/Components/Overlay/include" )
-	if( ${OGRE_USE_SCENE_FORMAT} )
-		include_directories( "${OGRE_SOURCE}/Components/SceneFormat/include" )
+	set( OGRE_INCLUDE_DIR "${OGRE_SDK}/include/${OGRE_NEXT_PREFIX}" )
+	if (WIN32)
+		set( OGRE_MEDIA_DIR "${OGRE_SDK}/Media" )
+	elseif (APPLE)
+		set( OGRE_MEDIA_DIR "${OGRE_SDK}/Media" )
+	elseif (UNIX)
+		set( OGRE_MEDIA_DIR "${OGRE_SDK}/share/${OGRE_NEXT_PREFIX}/Media" )
 	endif()
-	if( ${OGRE_USE_PLANAR_REFLECTIONS} )
-		include_directories( "${OGRE_SOURCE}/Components/PlanarReflections/include" )
+
+	if(CMAKE_CONFIGURATION_TYPES)
+		link_directories( "${OGRE_SDK}/lib/$<CONFIG>" )
+	else()
+		link_directories( "${OGRE_SDK}/lib" )
 	endif()
 
 	# Parse OgreBuildSettings.h to see if it's a static build
 	set( OGRE_DEPENDENCY_LIBS "" )
-	file( READ "${OGRE_BINARIES}/include/OgreBuildSettings.h" OGRE_BUILD_SETTINGS_STR )
+	file( READ "${OGRE_INCLUDE_DIR}/OgreBuildSettings.h" OGRE_BUILD_SETTINGS_STR )
 	string( FIND "${OGRE_BUILD_SETTINGS_STR}" "#define OGRE_BUILD_COMPONENT_ATMOSPHERE" OGRE_BUILD_COMPONENT_ATMOSPHERE )
 	string( FIND "${OGRE_BUILD_SETTINGS_STR}" "#define OGRE_STATIC_LIB" OGRE_STATIC )
 	if( NOT OGRE_STATIC EQUAL -1 )
@@ -288,7 +230,7 @@ macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
 		set( OGRE_STATIC "Static" )
 
 		# Static builds must link against its dependencies
-		addStaticDependencies( OGRE_SOURCE, OGRE_BINARIES, OGRE_BUILD_SETTINGS_STR, OGRE_DEPENDENCY_LIBS )
+		addStaticDependencies( OGRE_BUILD_SETTINGS_STR )
 	else()
 		message( STATUS "Detected DLL build of OgreNext" )
 		unset( OGRE_STATIC )
@@ -311,7 +253,6 @@ macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
 			message( "Could not find SDL2. https://www.libsdl.org/" )
 		else()
 			message( STATUS "Found SDL2" )
-			include_directories( ${SDL2_INCLUDE_DIR} )
 			set( OGRE_DEPENDENCY_LIBS ${OGRE_DEPENDENCY_LIBS} ${SDL2_LIBRARY} )
 		endif()
 	endif()
@@ -336,7 +277,6 @@ macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
 			debug ${OGRE_NEXT}Atmosphere${OGRE_STATIC}${OGRE_DEBUG_SUFFIX}
 			optimized ${OGRE_NEXT}Atmosphere${OGRE_STATIC}
 			)
-		include_directories( "${OGRE_SOURCE}/Components/Atmosphere/include" )
 	endif()
 
 	if( OGRE_STATIC )
@@ -346,7 +286,6 @@ macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
 				${OGRE_LIBRARIES}
 				debug RenderSystem_Direct3D11${OGRE_STATIC}${OGRE_DEBUG_SUFFIX}
 				optimized RenderSystem_Direct3D11${OGRE_STATIC} )
-			include_directories( "${OGRE_SOURCE}/RenderSystems/Direct3D11/include" )
 		endif()
 		if( OGRE_BUILD_RENDERSYSTEM_GL3PLUS )
 			message( STATUS "Detected GL3+ RenderSystem. Linking against it." )
@@ -354,8 +293,6 @@ macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
 				${OGRE_LIBRARIES}
 				debug RenderSystem_GL3Plus${OGRE_STATIC}${OGRE_DEBUG_SUFFIX}
 				optimized RenderSystem_GL3Plus${OGRE_STATIC} )
-			include_directories( "${OGRE_SOURCE}/RenderSystems/GL3Plus/include"
-				"${OGRE_SOURCE}/RenderSystems/GL3Plus/include/GLSL")
 
 			if( UNIX )
 				set( OGRE_DEPENDENCY_LIBS ${OGRE_DEPENDENCY_LIBS} Xt Xrandr X11 GL )
@@ -367,7 +304,6 @@ macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
 				${OGRE_LIBRARIES}
 				debug RenderSystem_Metal${OGRE_STATIC}${OGRE_DEBUG_SUFFIX}
 				optimized RenderSystem_Metal${OGRE_STATIC} )
-			include_directories( "${OGRE_SOURCE}/RenderSystems/Metal/include" )
 		endif()
 		if( OGRE_BUILD_RENDERSYSTEM_VULKAN )
 			message( STATUS "Detected Vulkan RenderSystem. Linking against it." )
@@ -375,7 +311,6 @@ macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
 				${OGRE_LIBRARIES}
 				debug RenderSystem_Vulkan${OGRE_STATIC}${OGRE_DEBUG_SUFFIX}
 				optimized RenderSystem_Vulkan${OGRE_STATIC} )
-			include_directories( "${OGRE_SOURCE}/RenderSystems/Vulkan/include" )
 
 			set( OGRE_DEPENDENCY_LIBS ${OGRE_DEPENDENCY_LIBS} xcb X11-xcb xcb-randr )
 		endif()
@@ -397,61 +332,37 @@ macro( setupOgre OGRE_SOURCE, OGRE_BINARIES, OGRE_LIBRARIES_OUT,
 		${OGRE_DEPENDENCY_LIBS}
 		)
 
-	set( OGRE_LIBRARIES_OUT ${OGRE_LIBRARIES} )
-
 	# Plugins.cfg
 	if( NOT APPLE )
 		set( OGRE_PLUGIN_DIR "Plugins" )
 	endif()
 
-	message( STATUS "Copying Hlms data files from Ogre repository" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/Hlms/Common" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data/Hlms" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/Hlms/Pbs"    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data/Hlms" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/Hlms/Unlit"  DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data/Hlms" )
-
-	message( STATUS "Copying Common data files from Ogre repository" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/2.0/scripts/materials/Common" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data/Materials" )
-	file( COPY "${OGRE_SOURCE}/Samples/Media/packs/DebugPack.zip"          DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Data" )
-
-	message( STATUS "Copying DLLs and generating Plugins.cfg for Debug" )
-	setupPluginFileFromTemplate( "Debug" ${OGRE_USE_SCENE_FORMAT} ${OGRE_USE_PLANAR_REFLECTIONS} )
-	message( STATUS "Copying DLLs and generating Plugins.cfg for Release" )
-	setupPluginFileFromTemplate( "Release" ${OGRE_USE_SCENE_FORMAT} ${OGRE_USE_PLANAR_REFLECTIONS} )
-	message( STATUS "Copying DLLs and generating Plugins.cfg for RelWithDebInfo" )
-	setupPluginFileFromTemplate( "RelWithDebInfo" ${OGRE_USE_SCENE_FORMAT} ${OGRE_USE_PLANAR_REFLECTIONS} )
-	message( STATUS "Copying DLLs and generating Plugins.cfg for MinSizeRel" )
-	setupPluginFileFromTemplate( "MinSizeRel" ${OGRE_USE_SCENE_FORMAT} ${OGRE_USE_PLANAR_REFLECTIONS} )
-
-	setupResourceFileFromTemplate()
-	setupOgreSamplesCommon()
-
 endmacro()
 
 #----------------------------------------------------------------------------------------
 
-macro( addStaticDependencies OGRE_SOURCE, OGRE_BINARIES, OGRE_BUILD_SETTINGS_STR, OGRE_DEPENDENCY_LIBS )
+macro( addStaticDependencies OGRE_BUILD_SETTINGS_STR )
 	if( WIN32 )
 		# Win32 seems to be the only one actually doing Debug builds for Dependencies w/ _d
 		set( OGRE_DEP_DEBUG_SUFFIX "_d" )
 	endif()
 
 	if( WIN32 )
-		set( OGRE_DEPENDENCIES "${OGRE_SOURCE}/Dependencies/lib/$(ConfigurationName)" CACHE STRING
+		set( OGRE_DEPENDENCIES "${OGRE_DEPENDENCIES}/lib/$(ConfigurationName)" CACHE STRING
 			 "Path to OGRE-Next's dependencies folder. Only used in Static Builds" )
 	elseif( IOS )
-		set( OGRE_DEPENDENCIES "${OGRE_SOURCE}/iOSDependencies/lib/$(CONFIGURATION)" CACHE STRING
+		set( OGRE_DEPENDENCIES "${OGRE_DEPENDENCIES}/lib/$(CONFIGURATION)" CACHE STRING
 			 "Path to OGRE-Next's dependencies folder. Only used in Static Builds" )
 	elseif( APPLE )
-		set( OGRE_DEPENDENCIES "${OGRE_SOURCE}/Dependencies/lib/$(CONFIGURATION)" CACHE STRING
+		set( OGRE_DEPENDENCIES "${OGRE_DEPENDENCIES}/lib/$(CONFIGURATION)" CACHE STRING
 			 "Path to OGRE-Next's dependencies folder. Only used in Static Builds" )
 	elseif( ANDROID )
-		set( OGRE_DEPENDENCIES "${OGRE_SOURCE}/DependenciesAndroid/lib" CACHE STRING
+		set( OGRE_DEPENDENCIES "${OGRE_DEPENDENCIES}/lib" CACHE STRING
 			"Path to OGRE-Next's dependencies folder. Only used in Static Builds" )
 	else()
-		set( OGRE_DEPENDENCIES "${OGRE_SOURCE}/Dependencies/lib" CACHE STRING
+		set( OGRE_DEPENDENCIES "${OGRE_DEPENDENCIES}/lib" CACHE STRING
 			 "Path to OGRE-Next's dependencies folder. Only used in Static Builds" )
 	endif()
-	link_directories( ${OGRE_DEPENDENCIES} )
 
 	string( FIND "${OGRE_BUILD_SETTINGS_STR}" "#define OGRE_NO_FREEIMAGE 0" OGRE_USES_FREEIMAGE )
 	if( NOT OGRE_USES_FREEIMAGE EQUAL -1 )
