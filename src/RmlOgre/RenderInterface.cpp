@@ -3,7 +3,6 @@
 #include "CompositorPassGeometry.hpp"
 #include "CompositorPassGeometryDef.hpp"
 #include "Geometry.hpp"
-#include "RenderInterface.hpp"
 
 #include <Compositor/OgreCompositorManager2.h>
 #include <Compositor/OgreCompositorNode.h>
