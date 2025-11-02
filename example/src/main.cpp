@@ -260,6 +260,8 @@ int main( int argc, const char *argv[] )
 	// Initialize Root
 	root->getRenderSystem()->setConfigOption("sRGB Gamma Conversion", "Yes");
 	Window *window = root->initialise(true, "RmlOgre example");
+	// Fix reported window size including window border
+	window->windowMovedOrResized();
 
 	Ogre::CompositorManager2 *compositorManager = root->getCompositorManager2();
 	compositorManager->setCompositorPassProvider(
