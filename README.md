@@ -10,22 +10,37 @@
 - ✔️ Geometry
 - ✔️ Textures
 - ✔️ Scissor region
-- ❌ Clip mask
-- ❌ Transforms
-- ❌ Layers
-- ❌ Render textures
-- ❌ Mask images
-- ❌ Filters
-- ❌ Shaders
+- ✔️ Clip mask
+- ✔️ Transforms
+- ✔️ Layers
+- ✔️ Render textures
+- ✔️ Mask images
+- ✔️ Filters
+- ✔️ Shaders
+
+## Supported render systems
+
+- OpenGL 3
+- Vulkan
+- DirectX 11
 
 ## Usage
 
 See the example folder, these are the main steps:
 
-- Add `media/scripts/compositors/Ui.compositor` to your OGRE `resources.cfg`.
-- Add `media/materials/AlphaBlend` to your OGRE `resources.cfg`.
+- Add to your OGRE `resources.cfg`:
+	- `media/scripts/materials/Rml`
+	- `media/scripts/materials/Rml/GLSL`
+	- `media/scripts/materials/Rml/HLSL`
+	- `media/scripts/compositors`
 - Add `FileSystem=.` as a resource path in order for relative path documents to load images correctly.
 - Add `FileSystem=/` as a resource path in order for absolute path documents to load images correctly.
-- Register a compositor pass provider for `nimble::RmlOgre::CompositorPassGeometry` with custom id `rml_geometry`, see `MyCompositorPassProvider` in `example/src/main.cpp`.
-- Connect the render interface output by connecting `nimble::RmlOgre::RenderInterface::GetOutput` to an extra external node in your main workspace, see `media/scripts/compositors/Example.compositor`.
+- Add a compositor pass provider that provides (see `MyCompositorPassProvider` in `example/src/main.cpp`):
+	- `nimble::RmlOgre::CompositorPassGeometry`, id `rml/geometry`
+	- `nimble::RmlOgre::CompositorPassRenderQuad`, id `rml/render_quad`
+
+- Render your scene to a texture.
+- Create an instance of `nimble::RmlOgre::RenderInterface` with your window texture (`output` parameter) and scene texture (`background` parameter).
+- Pass your render interface to a `Rml::CreateContext` call as normal.
+- Call `nimble::RmlOgre::RenderInterface::BeginFrame` before `Rml::Context::Render`.
 - Call `nimble::RmlOgre::RenderInterface::EndFrame` after `Rml::Context::Render`.
