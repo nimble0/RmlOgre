@@ -82,7 +82,8 @@ void RenderToTexturePass::writePass(
 		scissorRegion = Ogre::Vector4{0.0f, 0.0f, 1.0f, 1.0f};
 
 	auto baseMaterial = Ogre::MaterialManager::getSingleton().getByName("Rml/ScissorCopy");
-	auto material = baseMaterial->clone("");
+	Ogre::MaterialPtr material(OGRE_NEW Ogre::Material(nullptr, "", 0, "", false, nullptr));
+	*material = *baseMaterial;
 	material->load();
 	auto* technique = material->getBestTechnique();
 	auto* pass = technique->getPass(0);

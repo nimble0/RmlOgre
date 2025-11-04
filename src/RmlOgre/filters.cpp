@@ -84,7 +84,8 @@ BlurFilter BlurFilterMaker::make(float sigma)
 			weight /= weightsTotal;
 	}
 
-	auto blurH = this->blurMaterial->clone("");
+	Ogre::MaterialPtr blurH(OGRE_NEW Ogre::Material(nullptr, "", 0, "", false, nullptr));
+	*blurH = *this->blurMaterial;
 	blurH->load();
 	{
 		auto* pass = blurH
@@ -97,7 +98,8 @@ BlurFilter BlurFilterMaker::make(float sigma)
 		fragmentProgramParameters->setNamedConstant("weights", weights.data(), weights.size() / 4);
 	}
 
-	auto blurV = this->blurMaterial->clone("");
+	Ogre::MaterialPtr blurV(OGRE_NEW Ogre::Material(nullptr, "", 0, "", false, nullptr));
+	*blurV = *this->blurMaterial;
 	blurV->load();
 	{
 		auto* pass = blurV
@@ -147,7 +149,8 @@ std::unique_ptr<Filter> DropShadowFilterMaker::make(const Rml::Dictionary& param
 
 	if(sigma > 0.5f)
 	{
-		auto shadowMaterial = this->shadowMaterial->clone("");
+		Ogre::MaterialPtr shadowMaterial(OGRE_NEW Ogre::Material(nullptr, "", 0, "", false, nullptr));
+		*shadowMaterial = *this->shadowMaterial;
 		shadowMaterial->load();
 		{
 			auto* pass = shadowMaterial
@@ -166,7 +169,8 @@ std::unique_ptr<Filter> DropShadowFilterMaker::make(const Rml::Dictionary& param
 	}
 	else
 	{
-		auto shadowMaterial = this->blurlessShadowMaterial->clone("");
+		Ogre::MaterialPtr shadowMaterial(OGRE_NEW Ogre::Material(nullptr, "", 0, "", false, nullptr));
+		*shadowMaterial = *this->blurlessShadowMaterial;
 		shadowMaterial->load();
 		{
 			auto* pass = shadowMaterial
@@ -189,7 +193,8 @@ OpacityFilterMaker::OpacityFilterMaker()
 
 std::unique_ptr<Filter> OpacityFilterMaker::make(const Rml::Dictionary& parameters)
 {
-	auto material = this->baseMaterial->clone("");
+	Ogre::MaterialPtr material(OGRE_NEW Ogre::Material(nullptr, "", 0, "", false, nullptr));
+	*material = *this->baseMaterial;
 	material->load();
 	auto fragmentProgramParameters = material
 		->getBestTechnique()
@@ -207,7 +212,8 @@ ColourMatrixFilterMaker::ColourMatrixFilterMaker()
 
 std::unique_ptr<Filter> ColourMatrixFilterMaker::make(const Ogre::Matrix4& matrix)
 {
-	auto material = this->baseMaterial->clone("");
+	Ogre::MaterialPtr material(OGRE_NEW Ogre::Material(nullptr, "", 0, "", false, nullptr));
+	*material = *this->baseMaterial;
 	material->load();
 	material
 		->getBestTechnique()
@@ -310,7 +316,8 @@ MaskImageFilterMaker::MaskImageFilterMaker()
 
 SingleMaterialFilter MaskImageFilterMaker::make(Ogre::TextureGpu* image)
 {
-	auto material = this->baseMaterial->clone("");
+	Ogre::MaterialPtr material(OGRE_NEW Ogre::Material(nullptr, "", 0, "", false, nullptr));
+	*material = *this->baseMaterial;
 	material->load();
 	auto textureUnit = material
 		->getBestTechnique()
