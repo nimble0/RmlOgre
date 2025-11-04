@@ -1,6 +1,7 @@
 #include "geometry.hpp"
 
 #include <OgreRoot.h>
+#include <OgrePixelFormatGpuUtils.h>
 #include <Vao/OgreVaoManager.h>
 #include <Vao/OgreVertexArrayObject.h>
 
@@ -16,7 +17,11 @@ struct GuiVertex
 
 	GuiVertex(const Rml::Vertex& v) :
 		position{v.position.x, v.position.y},
-		colour{v.colour.red / 255.0f, v.colour.green / 255.0f, v.colour.blue / 255.0f, v.colour.alpha / 255.0f},
+		colour{
+			v.colour.red / 255.0f,
+			v.colour.green / 255.0f,
+			v.colour.blue / 255.0f,
+			v.colour.alpha / 255.0f},
 		uv{v.tex_coord.x, v.tex_coord.y}
 	{}
 

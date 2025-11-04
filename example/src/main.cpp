@@ -258,8 +258,9 @@ int main( int argc, const char *argv[] )
 		return -1;
 
 	// Initialize Root
-	root->getRenderSystem()->setConfigOption("sRGB Gamma Conversion", "Yes");
+	root->getRenderSystem()->setConfigOption("sRGB Gamma Conversion", "No");
 	Window *window = root->initialise(true, "RmlOgre example");
+	root->getRenderSystem()->setConfigOption("sRGB Gamma Conversion", "Yes");
 	// Fix reported window size including window border
 	window->windowMovedOrResized();
 

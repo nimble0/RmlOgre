@@ -10,7 +10,7 @@ compositor_node Rml/Start
 	{
 		pass render_quad
 		{
-			material Ogre/Copy/4xFP32
+			material Rml/ToSRGB
 			input 0 bg
 		}
 	}

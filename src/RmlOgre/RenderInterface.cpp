@@ -206,7 +206,7 @@ Rml::TextureHandle RenderInterface::LoadTexture(
 		texture = textureManager->createTexture(
 			source,
 			Ogre::GpuPageOutStrategy::Discard,
-			Ogre::TextureFlags::AutomaticBatching | Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB,
+			Ogre::TextureFlags::AutomaticBatching,
 			Ogre::TextureTypes::Type2D,
 			Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
 			Ogre::TextureFilter::TypePremultiplyAlpha);
@@ -250,7 +250,7 @@ Rml::TextureHandle RenderInterface::GenerateTexture(
 		source_dimensions.y,
 		1u,
 		Ogre::TextureTypes::Type2D,
-		Ogre::PixelFormatGpu::PFG_RGBA8_UNORM_SRGB,
+		Ogre::PixelFormatGpu::PFG_RGBA8_UNORM,
 		true,
 		1u);
 
@@ -264,7 +264,7 @@ Rml::TextureHandle RenderInterface::GenerateTexture(
 		Ogre::BLANKSTRING);
 	texture->setNumMipmaps(1);
 	texture->setResolution(source_dimensions.x, source_dimensions.y);
-	texture->setPixelFormat(Ogre::PixelFormatGpu::PFG_RGBA8_UNORM_SRGB);
+	texture->setPixelFormat(Ogre::PixelFormatGpu::PFG_RGBA8_UNORM);
 
 	bool canUseSynchronousUpload =
 		texture->getNextResidencyStatus() == Ogre::GpuResidency::Resident
