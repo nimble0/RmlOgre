@@ -1,6 +1,3 @@
-// Full window 3x3 checkerboard image with black border
-// Large text "Test" at top of window, horizontally centred,
-// with transparent red background
 <rml>
 	<head>
 		<style>

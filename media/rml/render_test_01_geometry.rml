@@ -1,8 +1,3 @@
-// Full window dark blue background with 1px red border all around
-// 50px yellow square in top left
-// 50px magenta square in top right
-// 50px cyan square in bottom left
-// 50px blue square in bottom right
 <rml>
 	<head>
 		<style>

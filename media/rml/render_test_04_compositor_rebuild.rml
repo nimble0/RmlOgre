@@ -1,10 +1,8 @@
-// Full window blue background
-// 8 50px green squares in a vertical line
-// No red or yellow visible
-//
-// This test being useful relies on implementation details:
-// - Initial compositor setup is less than 9 render nodes
-// - Each scissor region requires 1 node
+<!--
+	This test being useful relies on implementation details:
+	- Initial compositor setup is less than 9 render nodes
+	- Each scissor region requires 1 node
+-->
 <rml>
 	<head>
 		<style>
