@@ -3,6 +3,7 @@
 
 #include "CompositorPass.hpp"
 
+#include <Compositor/OgreCompositorChannel.h>
 #include <Compositor/OgreCompositorCommon.h>
 #include <OgreMaterial.h>
 

@@ -55,6 +55,7 @@ struct BaseRenderPass : BasePass
 {
 	RenderPassSettings settings;
 	std::vector<QueuedGeometry> queue;
+	std::vector<Ogre::TextureGpu*> textureDependencies;
 
 	int numRenderObjects() const override
 	{

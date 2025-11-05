@@ -221,20 +221,22 @@ void RenderInterface::RenderGeometry(
 	Rml::Vector2f translation,
 	Rml::TextureHandle texture)
 {
-	std::vector<QueuedGeometry>* queue = nullptr;
+	BaseRenderPass* pass = nullptr;
 	if(this->renderPassSettings.enableStencil)
-		queue = &this->getRenderPass<RenderWithStencilPass>().queue;
+		pass = &this->getRenderPass<RenderWithStencilPass>();
 	else
-		queue = &this->getRenderPass<RenderPass>().queue;
+		pass = &this->getRenderPass<RenderPass>();
 
 	auto& material = this->materials.at(texture);
 	if(material.needsHashing())
 		material.calculateHlmsHash();
-	queue->push_back({
+	pass->queue.push_back({
 		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 		translation,
 		material
 	});
+	if(material.textureDependency)
+		pass->textureDependencies.push_back(material.textureDependency);
 }
 void RenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry)
 {
@@ -598,7 +600,7 @@ Rml::TextureHandle RenderInterface::SaveLayerAsTexture()
 
 	this->passes.push_back(RenderToTexturePass(renderTexture.second, this->renderPassSettings));
 
-	auto material = Material{nullptr, datablock};
+	auto material = Material{nullptr, datablock, texture};
 	material.calculateHlmsHash();
 	auto handle = this->materials.insert(std::move(material));
 	return handle;

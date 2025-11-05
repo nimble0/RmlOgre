@@ -57,7 +57,7 @@ public:
 		mUseQuad( false ),
 		mIsResolve( false ),
 		mCameraCubemapReorient( false ),
-		mAnalyzeAllTextureLayouts( false ),
+		mAnalyzeAllTextureLayouts( true ),
 		mMaterialIsHlms( false ),
 		mFrustumCorners( FrustumCorners::NO_CORNERS )
 	{

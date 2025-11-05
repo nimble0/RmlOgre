@@ -30,6 +30,8 @@ CompositorPassGeometry::CompositorPassGeometry(
 {
 	this->initialize(rtv);
 
+	this->numStaticTextureDependencies = this->mTextureDependencies.size();
+
 	this->renderQueue = std::make_unique<Ogre::RenderQueue>(
 		Ogre::Root::getSingleton().getHlmsManager(),
 		this->camera->getSceneManager(),
@@ -37,6 +39,15 @@ CompositorPassGeometry::CompositorPassGeometry(
 	this->renderQueue->setSortRenderQueue(
 		RenderObject::RENDER_QUEUE_ID,
 		Ogre::RenderQueue::RqSortMode::DisableSort);
+}
+
+void CompositorPassGeometry::addTextureDependencies(const Ogre::CompositorChannelVec& textures)
+{
+	this->mTextureDependencies.erase(
+		this->mTextureDependencies.begin() + this->numStaticTextureDependencies,
+		this->mTextureDependencies.end());
+	for(auto* texture : textures)
+		this->mTextureDependencies.push_back(Ogre::CompositorTexture("", texture));
 }
 
 void CompositorPassGeometry::execute(const Ogre::Camera* lodCamera)
@@ -53,6 +64,7 @@ void CompositorPassGeometry::execute(const Ogre::Camera* lodCamera)
 
 	notifyPassEarlyPreExecuteListeners();
 
+	analyzeBarriers(true);
 	executeResourceTransitions();
 
 	setRenderPassDescToCurrent();

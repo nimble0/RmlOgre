@@ -18,6 +18,7 @@ struct Material
 {
 	Ogre::MaterialPtr    material;
 	Ogre::HlmsDatablock* datablock = nullptr;
+	Ogre::TextureGpu*    textureDependency = nullptr;
 	Ogre::uint32         hash = 0;
 	Ogre::uint32         casterHash = 0;
 
