@@ -41,10 +41,7 @@ void BaseRenderPass::writeRenderPass(
 	{
 		auto* object = workspace.addRenderObject();
 		object->setVao(queueObject.vao);
-		if(queueObject.material)
-			object->setMaterial(queueObject.material);
-		else
-			object->setDatablock(queueObject.datablock);
+		object->setPreparedMaterial(queueObject.material);
 
 		auto* sceneNode = workspace.addSceneNode();
 		sceneNode->setPosition(Ogre::Vector3{queueObject.translation.x, queueObject.translation.y, 0.0f});

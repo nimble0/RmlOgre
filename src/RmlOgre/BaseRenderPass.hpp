@@ -2,9 +2,8 @@
 #define NIMBLE_RMLOGRE_BASERENDERPASS_HPP
 
 #include "BasePass.hpp"
-
-#include <OgreMaterial.h>
-#include <OgreMatrix4.h>
+#include "Material.hpp"
+#include "RenderObject.hpp"
 
 #include <RmlUi/Core/RenderInterface.h>
 
@@ -27,8 +26,7 @@ struct QueuedGeometry
 {
 	Ogre::VertexArrayObject* vao = nullptr;
 	Rml::Vector2f translation;
-	Ogre::HlmsUnlitDatablock* datablock = nullptr;
-	Ogre::MaterialPtr material;
+	Material material;
 };
 
 struct RenderPassSettings

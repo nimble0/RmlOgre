@@ -20,6 +20,20 @@ compositor_node Rml/Start
 	out 2 rtd
 }
 
+compositor_node Rml/NewBuffer
+{
+	in 0 rt0
+	in 1 rt1
+	in 2 rtd
+
+	texture new target_width target_height PFG_RGBA16_FLOAT msaa_auto
+
+	out 0 rt0
+	out 1 rt1
+	out 2 rtd
+	out 3 new
+}
+
 compositor_node Rml/End
 {
 	in 0 rt0
@@ -239,9 +253,7 @@ compositor_node Rml/StartLayer
 	in 1 rt1
 	in 2 rtd
 
-	texture new target_width target_height PFG_RGBA16_FLOAT msaa_auto
-
-	target new
+	target rt0
 	{
 		pass clear
 		{
@@ -249,10 +261,9 @@ compositor_node Rml/StartLayer
 		}
 	}
 
-	out 0 new
+	out 0 rt0
 	out 1 rt1
 	out 2 rtd
-	out 3 rt0
 }
 
 compositor_node Rml/Swap
@@ -273,8 +284,7 @@ compositor_node Rml/Copy
 	in 0 rt0
 	in 1 rt1
 	in 2 rtd
-
-	texture copy target_width target_height PFG_RGBA16_FLOAT msaa_auto
+	in 3 copy
 
 	target copy
 	{
@@ -310,6 +320,7 @@ compositor_node Rml/Composite
 	out 0 dst
 	out 1 rt1
 	out 2 rtd
+	out 3 rt0
 }
 
 compositor_node Rml/CompositeWithStencil
@@ -361,6 +372,7 @@ compositor_node Rml/CompositeWithStencil
 	out 0 dst
 	out 1 rt1
 	out 2 rtd
+	out 3 rt0
 }
 
 compositor_node Rml/RenderQuad

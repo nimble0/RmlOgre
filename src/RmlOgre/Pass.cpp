@@ -42,13 +42,15 @@ void RenderQuadPass::writePass(
 }
 
 CompositePass::CompositePass(
-	int dst,
+	int dstIn,
+	int tmpOut,
 	bool noBlending,
 	const RenderPassSettings& renderPassSettings
 ) :
 	RenderQuadPass(nullptr, renderPassSettings),
 
-	dst{dst}
+	dstIn{dstIn},
+	tmpOut{tmpOut}
 {
 	if(noBlending)
 		this->material = Ogre::MaterialManager::getSingleton().getByName("Ogre/Copy/4xFP32");

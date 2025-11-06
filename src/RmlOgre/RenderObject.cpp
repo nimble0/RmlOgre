@@ -1,5 +1,9 @@
 #include "RenderObject.hpp"
 
+#include "Material.hpp"
+
+#include <OgreHlms.h>
+#include <OgreHlmsDatablock.h>
 #include <OgreRoot.h>
 #include <Vao/OgreVaoManager.h>
 
@@ -36,4 +40,27 @@ void RenderObject::setVao(Ogre::VertexArrayObject* vao)
 const Ogre::String& RenderObject::getMovableType() const
 {
 	return RenderObject::TYPE_NAME;
+}
+
+void RenderObject::setPreparedMaterial(const Material& material)
+{
+	if(material.material)
+	{
+		material.material->load();
+		this->mMaterial = material.material;
+		mLodMaterial = material.material->_getLodValues();
+	}
+
+	if(mHlmsDatablock != material.datablock)
+	{
+		if(mHlmsDatablock)
+			mHlmsDatablock->_unlinkRenderable(this);
+
+		if(!material.datablock || material.datablock->getCreator()->getType() != Ogre::HLMS_LOW_LEVEL)
+			mMaterial.reset();
+
+		mHlmsDatablock = material.datablock;
+		this->_setHlmsHashes(material.hash, material.casterHash);
+		mHlmsDatablock->_linkRenderable(this);
+	}
 }

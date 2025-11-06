@@ -7,11 +7,18 @@
 
 namespace nimble::RmlOgre {
 
+struct Material;
+
 class RenderObject : public Ogre::MovableObject, public Ogre::Renderable
 {
+friend struct Material;
+
 	static Ogre::String TYPE_NAME;
 
 public:
+	RenderObject() :
+		Ogre::MovableObject(nullptr)
+	{}
 	RenderObject(
 		Ogre::IdType id,
 		Ogre::ObjectMemoryManager* objectMemoryManager,
@@ -45,6 +52,8 @@ public:
 			"nimble::RmlOgre::RenderObject doesn't support the old v1::RenderOperations.",
 			"nimble::RmlOgre::RenderObject::getRenderOperation");
 	}
+
+	void setPreparedMaterial(const Material& material);
 };
 
 }

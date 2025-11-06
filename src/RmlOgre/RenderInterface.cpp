@@ -49,10 +49,10 @@ RenderInterface::RenderInterface(
 	this->samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
 	this->samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
 
-	this->noTextureDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+	auto* noTextureDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(
 		this->hlms->getDatablock("NoTexture"));
-	if(!this->noTextureDatablock)
-		this->noTextureDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+	if(!noTextureDatablock)
+		noTextureDatablock = static_cast<Ogre::HlmsUnlitDatablock*>(
 			this->hlms->createDatablock(
 				"NoTexture",
 				"NoTexture",
@@ -60,7 +60,10 @@ RenderInterface::RenderInterface(
 				this->blendblock,
 				Ogre::HlmsParamVec())
 		);
-	this->noTextureDatablock->setUseColour(true);
+	noTextureDatablock->setUseColour(true);
+	Material noTextureMaterial{nullptr, noTextureDatablock};
+	noTextureMaterial.calculateHlmsHash();
+	this->materials.insert(std::move(noTextureMaterial));
 
 	this->AddFilterMaker("blur", std::make_unique<BlurFilterMaker>());
 	this->AddFilterMaker("drop-shadow", std::make_unique<DropShadowFilterMaker>());
@@ -107,15 +110,17 @@ void RenderInterface::releaseBufferedTextures()
 
 	for(Rml::TextureHandle texture : this->releaseTextures)
 	{
-		auto* datablock = reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture);
+		auto& material = this->materials.at(texture);
+		auto* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(material.datablock);
 		auto* textureGpu = datablock->getTexture(0);
 
-		for(auto* r : datablock->getLinkedRenderables())
-			r->setDatablock(this->noTextureDatablock);
+		assert(datablock->getLinkedRenderables().empty());
 
 		this->hlms->destroyDatablock(datablock->getName());
 		if(!this->workspace.freeRenderTexture(textureGpu))
 			textureManager.destroyTexture(textureGpu);
+
+		this->materials.erase(texture);
 	}
 	this->releaseTextures.clear();
 
@@ -124,12 +129,53 @@ void RenderInterface::releaseBufferedTextures()
 	this->releaseRenderTextures.clear();
 }
 
+Layer RenderInterface::getLayerBuffer(int index)
+{
+	if(index < 0)
+		index += this->numActiveLayers;
+
+	if(index >= static_cast<int>(this->layerBuffers.size()))
+		throw std::out_of_range("Layer buffer index out of range");
+
+	return this->layerBuffers[index].take();
+}
+void RenderInterface::putLayerBuffer(int index, Layer layer)
+{
+	if(index < 0)
+		index += this->numActiveLayers;
+
+	if(index >= static_cast<int>(this->layerBuffers.size()))
+		throw std::out_of_range("Layer buffer index out of range");
+
+	this->layerBuffers[index] = layer;
+}
+Layer RenderInterface::acquireLayerBuffer()
+{
+	if(this->numActiveLayers == static_cast<int>(this->layerBuffers.size()))
+	{
+		Layer layer{this->addConnection(), -1};
+		this->layerBuffers.push_back(layer);
+		this->passes.push_back(NewBufferPass(layer.connectionId));
+	}
+
+	++this->numActiveLayers;
+	return this->getLayerBuffer(-1);
+}
+void RenderInterface::releaseLayerBuffer(Layer layer)
+{
+	this->putLayerBuffer(-1, layer);
+	--this->numActiveLayers;
+}
+
 
 void RenderInterface::BeginFrame()
 {
 	this->workspace.clearAll();
 	this->releaseBufferedGeometries();
 	this->releaseBufferedTextures();
+
+	this->numActiveLayers = 1;
+	this->layerBuffers.push_back(Layer{-1, -1});
 }
 
 void RenderInterface::EndFrame()
@@ -138,6 +184,7 @@ void RenderInterface::EndFrame()
 
 	this->passes.clear();
 	this->layerBuffers.clear();
+	this->numActiveLayers = 0;
 	this->renderPassSettings = RenderPassSettings{};
 	this->connectionId = 0;
 }
@@ -180,11 +227,13 @@ void RenderInterface::RenderGeometry(
 	else
 		queue = &this->getRenderPass<RenderPass>().queue;
 
+	auto& material = this->materials.at(texture);
+	if(material.needsHashing())
+		material.calculateHlmsHash();
 	queue->push_back({
 		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 		translation,
-		texture ? reinterpret_cast<Ogre::HlmsUnlitDatablock*>(texture) : this->noTextureDatablock,
-		nullptr
+		material
 	});
 }
 void RenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry)
@@ -227,7 +276,10 @@ Rml::TextureHandle RenderInterface::LoadTexture(
 	datablock->setTexture(0, texture, &this->samplerblock);
 	datablock->setUseColour(true);
 
-	return reinterpret_cast<Rml::TextureHandle>(datablock);
+	auto material = Material{nullptr, datablock};
+	material.calculateHlmsHash();
+	auto handle = this->materials.insert(std::move(material));
+	return handle;
 }
 Rml::TextureHandle RenderInterface::GenerateTexture(
 	Rml::Span<const Rml::byte> source,
@@ -278,7 +330,10 @@ Rml::TextureHandle RenderInterface::GenerateTexture(
 	datablock->setTexture(0, texture, &this->samplerblock);
 	datablock->setUseColour(true);
 
-	return reinterpret_cast<Rml::TextureHandle>(datablock);
+	auto material = Material{nullptr, datablock};
+	material.calculateHlmsHash();
+	auto handle = this->materials.insert(std::move(material));
+	return handle;
 }
 void RenderInterface::ReleaseTexture(Rml::TextureHandle texture)
 {
@@ -332,24 +387,21 @@ void RenderInterface::RenderToClipMask(
 		this->getRenderPass<RenderToStencilSetPass>().queue.push_back({
 			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 			translation,
-			this->noTextureDatablock,
-			nullptr
+			this->materials[0]
 		});
 		break;
 	case Rml::ClipMaskOperation::SetInverse:
 		this->getRenderPass<RenderToStencilSetInversePass>().queue.push_back({
 			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 			translation,
-			this->noTextureDatablock,
-			nullptr
+			this->materials[0]
 		});
 		break;
 	case Rml::ClipMaskOperation::Intersect:
 		this->getRenderPass<RenderToStencilIntersectPass>().queue.push_back({
 			reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 			translation,
-			this->noTextureDatablock,
-			nullptr
+			this->materials[0]
 		});
 		break;
 	}
@@ -369,10 +421,13 @@ void RenderInterface::RenderToClipMask(
 
 Rml::LayerHandle RenderInterface::PushLayer()
 {
-	int oldTopLayer = this->addConnection();
-	this->layerBuffers.push_back(oldTopLayer);
-	this->passes.push_back({StartLayerPass(oldTopLayer)});
-	return Rml::LayerHandle{this->layerBuffers.size()};
+	Layer oldTopLayer{this->addConnection(), -1};
+	this->putLayerBuffer(-1, oldTopLayer);
+	Layer newLayer = this->acquireLayerBuffer();
+	this->passes.push_back(SwapPass(newLayer.connectionId, oldTopLayer.connectionId));
+	this->passes.push_back(StartLayerPass{});
+
+	return Rml::LayerHandle(this->numActiveLayers - 1);
 }
 void RenderInterface::CompositeLayers(
 	Rml::LayerHandle source,
@@ -380,65 +435,109 @@ void RenderInterface::CompositeLayers(
 	Rml::BlendMode blend_mode,
 	Rml::Span<const Rml::CompiledFilterHandle> filters)
 {
-	int topLayer = this->addConnection();
-	int sourceLayer = -1;
-	int destinationLayer = -1;
+	Layer topLayer{this->addConnection(), -1};
+	Layer sourceLayer;
+	Layer destinationLayer;
 
-	bool sourceIsTopLayer = source == this->layerBuffers.size();
-	bool destinationIsTopLayer = destination == this->layerBuffers.size();
+	bool sourceIsTopLayer = static_cast<int>(source) == this->numActiveLayers - 1;
+	bool destinationIsTopLayer = static_cast<int>(destination) == this->numActiveLayers - 1;
 
-	if(!sourceIsTopLayer)
+	Layer tempLayer = this->acquireLayerBuffer();
+	if(sourceIsTopLayer)
 	{
-		this->passes.push_back(SwapPass(this->layerBuffers.at(source), topLayer));
-		sourceLayer = this->addConnection();
-		this->passes.push_back(CopyPass(sourceLayer));
+		topLayer.copyPass = this->passes.size();
+		this->passes.push_back(CopyPass(tempLayer.connectionId, topLayer.connectionId));
 	}
 	else
-		this->passes.push_back(CopyPass(topLayer));
+	{
+		this->passes.push_back(SwapPass(this->getLayerBuffer(source).connectionId, topLayer.connectionId));
+		sourceLayer = Layer{this->addConnection(), static_cast<int>(this->passes.size())};
+		this->passes.push_back(CopyPass(tempLayer.connectionId, sourceLayer.connectionId));
+	}
 
 	if(destinationIsTopLayer)
 	{
 		destinationLayer = topLayer;
-		topLayer = -1;
+		topLayer = Layer{};
 	}
 	else if(source == destination)
 	{
 		destinationLayer = sourceLayer;
-		sourceLayer = -1;
+		sourceLayer = Layer{};
 	}
 	else
 		destinationLayer = this->layerBuffers.at(destination);
 
-	if(sourceLayer != -1)
-		this->layerBuffers.at(source) = sourceLayer;
+	// Change source layer to copy (if destination != source)
+	if(!sourceLayer.isTaken())
+		this->putLayerBuffer(source, sourceLayer);
 
 
 	for(auto filter : filters)
 		this->filters.at(filter)->apply(*this);
 
 
+	tempLayer = Layer{this->addConnection(), -1};
 	if(this->renderPassSettings.enableStencil)
+	{
 		this->passes.push_back(CompositeWithStencilPass(
-			destinationLayer,
+			destinationLayer.connectionId,
+			tempLayer.connectionId,
 			blend_mode == Rml::BlendMode::Replace,
 			this->renderPassSettings));
+	}
 	else
+	{
 		this->passes.push_back(CompositePass(
-			destinationLayer,
+			destinationLayer.connectionId,
+			tempLayer.connectionId,
 			blend_mode == Rml::BlendMode::Replace,
 			this->renderPassSettings));
+	}
+	this->releaseLayerBuffer(tempLayer);
 
 	if(!destinationIsTopLayer)
 	{
-		destinationLayer = this->addConnection();
-		this->passes.push_back(SwapPass(topLayer, destinationLayer));
-		this->layerBuffers.at(destination) = destinationLayer;
+		destinationLayer = Layer{this->addConnection(), static_cast<int>(this->passes.size())};
+		this->passes.push_back(SwapPass(topLayer.connectionId, destinationLayer.connectionId));
+		this->putLayerBuffer(destination, destinationLayer);
+		this->putLayerBuffer(-1, Layer{-1, topLayer.copyPass});
 	}
 }
 void RenderInterface::PopLayer()
 {
-	this->passes.push_back({SwapPass(this->layerBuffers.back())});
-	this->layerBuffers.pop_back();
+	Layer poppedLayer = this->getLayerBuffer(-1);
+	Layer newTopLayer = this->getLayerBuffer(-2);
+	auto* lastPass = std::get_if<SwapPass>(&this->passes.back());
+	if(lastPass)
+	{
+		CopyPass* copyPass = nullptr;
+		if(poppedLayer.copyPass != -1)
+			copyPass = std::get_if<CopyPass>(&this->passes[poppedLayer.copyPass]);
+		if(copyPass && lastPass->swapIn == copyPass->copyOut)
+		{
+			this->releaseLayerBuffer(Layer{copyPass->copyIn, -1});
+			this->passes[poppedLayer.copyPass] = NullPass{};
+			if(newTopLayer.connectionId == lastPass->swapOut)
+				this->passes.pop_back();
+			else
+				this->passes.back() = SwapPass(newTopLayer.connectionId, lastPass->swapOut);
+		}
+		else
+		{
+			this->releaseLayerBuffer(Layer{lastPass->swapIn, -1});
+			if(newTopLayer.connectionId == lastPass->swapOut)
+				this->passes.pop_back();
+			else
+				this->passes.back() = SwapPass(newTopLayer.connectionId, lastPass->swapOut);
+		}
+	}
+	else
+	{
+		Layer poppedLayer{this->addConnection(), -1};
+		this->releaseLayerBuffer(poppedLayer);
+		this->passes.push_back(SwapPass{newTopLayer.connectionId, poppedLayer.connectionId});
+	}
 }
 
 
@@ -499,7 +598,10 @@ Rml::TextureHandle RenderInterface::SaveLayerAsTexture()
 
 	this->passes.push_back(RenderToTexturePass(renderTexture.second, this->renderPassSettings));
 
-	return reinterpret_cast<Rml::TextureHandle>(datablock);
+	auto material = Material{nullptr, datablock};
+	material.calculateHlmsHash();
+	auto handle = this->materials.insert(std::move(material));
+	return handle;
 }
 
 Rml::CompiledFilterHandle RenderInterface::SaveLayerAsMaskImage()
@@ -548,7 +650,11 @@ Rml::CompiledShaderHandle RenderInterface::CompileShader(
 		return {};
 
 	auto shader = maker->second->make(parameters);
-	auto handle = this->shaders.insert(std::move(shader));
+	shader->setMacroblock(this->macroblock);
+	shader->setBlendblock(this->blendblock);
+	auto material = Material{shader};
+	material.calculateHlmsHash();
+	auto handle = this->shaders.insert(std::move(material));
 	return handle;
 }
 void RenderInterface::RenderShader(
@@ -558,6 +664,8 @@ void RenderInterface::RenderShader(
 	Rml::TextureHandle texture)
 {
 	auto& material = this->shaders.at(shader);
+	if(material.needsHashing())
+		material.calculateHlmsHash();
 
 	std::vector<QueuedGeometry>* queue = nullptr;
 	if(this->renderPassSettings.enableStencil)
@@ -568,7 +676,6 @@ void RenderInterface::RenderShader(
 	queue->push_back({
 		reinterpret_cast<Ogre::VertexArrayObject*>(geometry),
 		translation,
-		nullptr,
 		material
 	});
 }

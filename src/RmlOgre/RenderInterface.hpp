@@ -2,8 +2,8 @@
 #define NIMBLE_RMLOGRE_RENDERINTERFACE_HPP
 
 #include "FilterMaker.hpp"
+#include "Material.hpp"
 #include "ObjectIndex.hpp"
-#include "RenderObject.hpp"
 #include "ShaderMaker.hpp"
 #include "Workspace.hpp"
 #include "filters.hpp"
@@ -25,24 +25,42 @@ class TextureGpu;
 
 namespace nimble::RmlOgre {
 
+struct Layer
+{
+	int connectionId = -1;
+	int copyPass = -1;
+
+	Layer take()
+	{
+		Layer self = *this;
+		this->connectionId = -1;
+		return self;
+	}
+	bool isTaken() const
+	{
+		return this->connectionId == -1;
+	}
+};
+
 class RenderInterface : public Rml::RenderInterface
 {
 	Ogre::HlmsUnlit* hlms = nullptr;
 	Ogre::HlmsMacroblock macroblock;
 	Ogre::HlmsBlendblock blendblock;
 	Ogre::HlmsSamplerblock samplerblock;
-	Ogre::HlmsUnlitDatablock* noTextureDatablock;
+	ObjectIndex<Material> materials;
 
 	std::unordered_map<Rml::String, std::unique_ptr<FilterMaker>> filterMakers;
 	MaskImageFilterMaker maskImageFilterMaker;
 	ObjectIndex<std::unique_ptr<Filter>> filters;
 
 	std::unordered_map<Rml::String, std::unique_ptr<ShaderMaker>> shaderMakers;
-	ObjectIndex<Ogre::MaterialPtr> shaders;
+	ObjectIndex<Material> shaders;
 
 	RenderPassSettings renderPassSettings;
 	int connectionId = 0;
-	std::vector<int> layerBuffers;
+	std::vector<Layer> layerBuffers;
+	int numActiveLayers = 0;
 	Passes passes;
 
 	int datablockId = 0;
@@ -81,6 +99,10 @@ public:
 
 
 	int addConnection() { return this->connectionId++; }
+	Layer getLayerBuffer(int index);
+	void putLayerBuffer(int index, Layer id);
+	Layer acquireLayerBuffer();
+	void releaseLayerBuffer(Layer id);
 
 	const RenderPassSettings& currentRenderPassSettings() const { return this->renderPassSettings; }
 	void addPass(Pass&& pass);
