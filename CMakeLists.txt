@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 
 project(RmlOgre VERSION 0.1 LANGUAGES CXX)
 
+option(BUILD_EXAMPLE "Build example executable" TRUE)
+
+
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -99,4 +102,7 @@ install(
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/RmlOgre
 )
 
-add_subdirectory("example")
+if(BUILD_EXAMPLE)
+	add_subdirectory("example")
+endif()
+
