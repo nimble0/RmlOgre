@@ -12,6 +12,7 @@ FileSystem=@OGRE_MEDIA_DIR@/2.0/scripts/materials/Common/HLSL
 FileSystem=@OGRE_MEDIA_DIR@/2.0/scripts/materials/Common/Metal
 
 FileSystem=@RMLOGRE_MEDIA_DIR@/scripts/compositors
+FileSystem=@RMLOGRE_MEDIA_DIR@/scripts/compositors/Rml
 FileSystem=@RMLOGRE_MEDIA_DIR@/rml
 FileSystem=.
 

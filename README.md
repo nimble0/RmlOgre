@@ -29,10 +29,10 @@
 See the example folder, these are the main steps:
 
 - Add to your OGRE `resources.cfg`:
-	- `media/scripts/materials/Rml`
-	- `media/scripts/materials/Rml/GLSL`
-	- `media/scripts/materials/Rml/HLSL`
-	- `media/scripts/compositors`
+	- `@RMLOGRE_MEDIA/DIR@/scripts/materials/Rml`
+	- `@RMLOGRE_MEDIA/DIR@/scripts/materials/Rml/GLSL`
+	- `@RMLOGRE_MEDIA/DIR@/scripts/materials/Rml/HLSL`
+	- `@RMLOGRE_MEDIA/DIR@/scripts/compositors/Rml`
 - Add `FileSystem=.` as a resource path in order for relative path documents to load images correctly.
 - Add `FileSystem=/` as a resource path in order for absolute path documents to load images correctly.
 - Add a compositor pass provider that provides (see `MyCompositorPassProvider` in `example/src/main.cpp`):
