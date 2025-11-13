@@ -10,6 +10,7 @@
 #include <OgreHlmsDatablock.h>
 #include <OgreMemoryStdAlloc.h>
 #include <OgreString.h>
+#include <OgreTextureGpuListener.h>
 
 #include <RmlUi/Core/RenderInterface.h>
 
@@ -61,7 +62,7 @@ struct RenderTexture
 
 using Passes = std::vector<Pass>;
 
-class Workspace
+class Workspace : public Ogre::TextureGpuListener
 {
 	static const std::size_t NUM_NODE_TYPES = std::variant_size_v<Pass>;
 
@@ -78,13 +79,14 @@ class Workspace
 	std::vector<Ogre::SceneNode> sceneNodes;
 	std::vector<RenderObject, Ogre::STLAllocator<RenderObject, Ogre::AlignAllocPolicy<>>> renderObjects;
 
-	Ogre::TextureGpu* output = nullptr;
-	Ogre::TextureGpu* background = nullptr;
+	Ogre::TextureGpu* output_ = nullptr;
+	Ogre::TextureGpu* background_ = nullptr;
 	ResourcePool<Ogre::TextureGpu*> renderTextures;
 
 	Ogre::CompositorWorkspace* workspace = nullptr;
 	Ogre::CompositorWorkspaceDef* workspaceDef = nullptr;
 
+	void clearWorkspace();
 	void buildWorkspace(const std::array<std::size_t, NUM_NODE_TYPES>& reservedNodes);
 	void ensureWorkspaceNodes(const std::array<std::size_t, NUM_NODE_TYPES>& minNodes);
 
@@ -120,6 +122,17 @@ public:
 
 	std::pair<Ogre::TextureGpu*, std::size_t> getRenderTexture();
 	bool freeRenderTexture(Ogre::TextureGpu* texture);
+
+	Ogre::TextureGpu* output() const;
+	void output(Ogre::TextureGpu* texture);
+	Ogre::TextureGpu* background() const;
+	void background(Ogre::TextureGpu* texture);
+
+	void notifyTextureChanged(
+		Ogre::TextureGpu* texture,
+		Ogre::TextureGpuListener::Reason reason,
+		void* extraData
+	) override;
 };
 
 }

@@ -95,7 +95,7 @@ public:
 		const Ogre::String& name,
 		Ogre::SceneManager* sceneManager,
 		Ogre::TextureGpu* output,
-		Ogre::TextureGpu* background);
+		Ogre::TextureGpu* background = nullptr);
 
 
 	int addConnection() { return this->connectionId++; }
@@ -111,6 +111,12 @@ public:
 
 	void AddFilterMaker(Rml::String name, std::unique_ptr<FilterMaker> filterMaker);
 	void AddShaderMaker(Rml::String name, std::unique_ptr<ShaderMaker> shaderMaker);
+
+	Ogre::TextureGpu* GetOutput() const       { return this->workspace.output(); }
+	void SetOutput(Ogre::TextureGpu* texture) { this->workspace.output(texture); }
+	Ogre::TextureGpu* GetBackground() const       { return this->workspace.background(); }
+	void SetBackground(Ogre::TextureGpu* texture) { this->workspace.background(texture); }
+
 
 	void BeginFrame();
 	void EndFrame();

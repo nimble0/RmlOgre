@@ -32,6 +32,6 @@ void NodeConnectionMap::setOut(int id, int channel)
 void NodeConnectionMap::setExternal(int externalChannel, int channel)
 {
 	this->currentNode->connectExternalRT(
-		this->workspace->getExternalRenderTargets()[externalChannel],
+		this->workspace->getExternalRenderTargets()[this->externalChannelOffset + externalChannel],
 		channel);
 }

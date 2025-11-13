@@ -19,11 +19,13 @@ class NodeConnectionMap
 	Ogre::CompositorWorkspace* workspace;
 	Ogre::CompositorNode* currentNode;
 
+	int externalChannelOffset = 0;
 	std::unordered_map<int, std::pair<Ogre::CompositorNode*, int>> outMap;
 
 public:
-	NodeConnectionMap(Ogre::CompositorWorkspace* workspace) :
-		workspace{workspace}
+	NodeConnectionMap(Ogre::CompositorWorkspace* workspace, int externalChannelOffset) :
+		workspace{workspace},
+		externalChannelOffset{externalChannelOffset}
 	{}
 
 	void setCurrentNode(Ogre::CompositorNode* node)

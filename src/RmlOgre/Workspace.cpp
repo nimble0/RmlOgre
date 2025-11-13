@@ -103,9 +103,7 @@ Workspace::Workspace(
 	Ogre::TextureGpu* output,
 	Ogre::TextureGpu* background
 ) :
-	sceneManager{sceneManager},
-	output{output},
-	background{background}
+	sceneManager{sceneManager}
 {
 	this->camera = this->sceneManager->createCamera(name + "_Camera");
 
@@ -140,10 +138,15 @@ Workspace::Workspace(
 		->mMaterialName = "Rml/ScissorCopy";
 
 	this->reserveRenderTextures(4);
-	this->buildWorkspace({});
+
+	this->output(output);
+	this->background(background);
 }
 Workspace::~Workspace()
 {
+	this->output(nullptr);
+	this->background(nullptr);
+
 	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
 	if(this->workspace)
 		compositorManager->removeWorkspace(this->workspace);
@@ -171,8 +174,8 @@ Workspace& Workspace::operator=(Workspace&& b)
 	std::swap(this->sceneNodes, b.sceneNodes);
 	std::swap(this->renderObjects, b.renderObjects);
 
-	this->output = b.output;
-	this->background = b.background;
+	this->output(b.output_);
+	this->background(b.background_);
 	std::swap(this->renderTextures, b.renderTextures);
 
 	std::swap(this->workspaceDef, b.workspaceDef);
@@ -181,22 +184,35 @@ Workspace& Workspace::operator=(Workspace&& b)
 	return *this;
 }
 
-void Workspace::buildWorkspace(const std::array<std::size_t, NUM_NODE_TYPES>& reservedNodes)
+void Workspace::clearWorkspace()
 {
 	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
 
 	// Clear existing
 	if(this->workspace)
+	{
 		compositorManager->removeWorkspace(this->workspace);
+		this->workspace = nullptr;
+	}
 	for(auto& nodeType : this->nodeTypes)
 		nodeType.nodes.clear();
 	this->workspaceDef->clearAll();
+}
 
+void Workspace::buildWorkspace(const std::array<std::size_t, NUM_NODE_TYPES>& reservedNodes)
+{
 	// This is just to prevent warnings about unconnected channels,
 	// populateWorkspace will overwrite this connection
-	this->workspaceDef->connect("Rml/Start", 0, "Rml/End", 0);
+	if(this->background_)
+	{
+		this->workspaceDef->connect("Rml/StartWithBackground", 0, "Rml/End", 0);
+		this->workspaceDef->connectExternal(1, "Rml/StartWithBackground", 0);
+	}
+	else
+	{
+		this->workspaceDef->connect("Rml/Start", 0, "Rml/End", 0);
+	}
 	this->workspaceDef->connectExternal(0, "Rml/End", 1);
-	this->workspaceDef->connectExternal(1, "Rml/Start", 0);
 
 	std::array<std::vector<Ogre::IdString>, NUM_NODE_TYPES> nodeTypeNames;
 	// Start from 1 to skip null passes
@@ -217,12 +233,13 @@ void Workspace::buildWorkspace(const std::array<std::size_t, NUM_NODE_TYPES>& re
 
 	Ogre::CompositorChannelVec externalTextures;
 	externalTextures.reserve(this->renderTextures.size() + 2);
-	externalTextures.push_back(this->output);
-	externalTextures.push_back(this->background);
+	externalTextures.push_back(this->output_);
+	if(this->background_)
+		externalTextures.push_back(this->background_);
 	for(auto& texture : this->renderTextures)
 		externalTextures.push_back(texture);
 
-	this->workspace = compositorManager->addWorkspace(
+	this->workspace = Ogre::Root::getSingleton().getCompositorManager2()->addWorkspace(
 		this->sceneManager,
 		externalTextures,
 		this->camera,
@@ -251,13 +268,17 @@ void Workspace::buildWorkspace(const std::array<std::size_t, NUM_NODE_TYPES>& re
 
 void Workspace::ensureWorkspaceNodes(const std::array<std::size_t, NUM_NODE_TYPES>& minNodes)
 {
-	bool needRebuild = false;
-	// Start from 1 to skip null passes
-	for(std::size_t i = 1; i < this->nodeTypes.size(); ++i)
-		needRebuild = needRebuild || this->nodeTypes[i].nodes.size() < minNodes[i];
+	bool needRebuild = !this->workspace;
+	if(!needRebuild)
+	{
+		// Start from 1 to skip null passes
+		for(std::size_t i = 1; i < this->nodeTypes.size(); ++i)
+			needRebuild = needRebuild || this->nodeTypes[i].nodes.size() < minNodes[i];
 
-	needRebuild = needRebuild
-		|| this->workspace->getExternalRenderTargets().size() < (this->renderTextures.size() + 2);
+		auto requiredRenderTargets = this->renderTextures.size() + 1 + (this->background_ ? 1 : 0);
+		needRebuild = needRebuild
+			|| this->workspace->getExternalRenderTargets().size() < requiredRenderTargets;
+	}
 
 	if(needRebuild)
 	{
@@ -316,8 +337,8 @@ void Workspace::updateSceneNodes()
 
 void Workspace::updateProjectionMatrix()
 {
-	float scaleX = 2.0f / this->output->getWidth();
-	float scaleY = -2.0f / this->output->getHeight();
+	float scaleX = 2.0f / this->output_->getWidth();
+	float scaleY = -2.0f / this->output_->getHeight();
 	this->projectionMatrix_ = Ogre::Matrix4
 	{
 		scaleX, 0.0,    0.0, -1.0,
@@ -364,15 +385,18 @@ void Workspace::populateWorkspace(const Passes& passes)
 	for(auto* node : nodeSequence)
 		node->_notifyCleared();
 
-	Ogre::CompositorNode* startNode = this->workspace->findNode("Rml/Start");
+	Ogre::CompositorNode* startNode = this->background_
+		? this->workspace->findNode("Rml/StartWithBackground")
+		: this->workspace->findNode("Rml/Start");
 	Ogre::CompositorNode* endNode = this->workspace->findNode("Rml/End");
 
 	nodeSequence.clear();
 	nodeSequence.push_back(startNode);
 
-	startNode->connectExternalRT(
-		this->workspace->getExternalRenderTargets()[1],
-		0);
+	if(this->background_)
+		startNode->connectExternalRT(
+			this->workspace->getExternalRenderTargets()[1],
+			0);
 	endNode->connectExternalRT(
 		this->workspace->getExternalRenderTargets()[0],
 		1);
@@ -383,7 +407,7 @@ void Workspace::populateWorkspace(const Passes& passes)
 	for(auto& type : this->nodeTypes)
 		nodeTypeIters.push_back({type.nodes.begin(), type.nodes.end()});
 
-	NodeConnectionMap extraConnections(this->workspace);
+	NodeConnectionMap extraConnections(this->workspace, this->background_ ? 2 : 1);
 
 	Ogre::CompositorNode* lastActiveNode = startNode;
 	for(auto& pass : passes)
@@ -470,11 +494,11 @@ Ogre::IdString Workspace::getName() const
 }
 Ogre::uint32 Workspace::width() const
 {
-	return this->output->getWidth();
+	return this->output_->getWidth();
 }
 Ogre::uint32 Workspace::height() const
 {
-	return this->output->getHeight();
+	return this->output_->getHeight();
 }
 
 std::pair<Ogre::TextureGpu*, std::size_t> Workspace::getRenderTexture()
@@ -483,11 +507,51 @@ std::pair<Ogre::TextureGpu*, std::size_t> Workspace::getRenderTexture()
 		this->reserveRenderTextures(2 * this->renderTextures.size());
 
 	auto claimed = this->renderTextures.claim();
-	// First 2 render textures are reserved
-	// Other render textures start at 2
-	return {claimed.first, claimed.second + 2};
+	return {claimed.first, claimed.second};
 }
 bool Workspace::freeRenderTexture(Ogre::TextureGpu* texture)
 {
 	return this->renderTextures.free(texture);
+}
+
+Ogre::TextureGpu* Workspace::output() const
+{
+	return this->output_;
+}
+void Workspace::output(Ogre::TextureGpu* texture)
+{
+	if(this->output_)
+		this->output_->removeListener(this);
+
+	this->output_ = texture;
+	if(this->output_)
+		this->output_->addListener(this);
+
+	this->clearWorkspace();
+}
+Ogre::TextureGpu* Workspace::background() const
+{
+	return this->background_;
+}
+void Workspace::background(Ogre::TextureGpu* texture)
+{
+	if(this->background_)
+		this->background_->removeListener(this);
+
+	this->background_ = texture;
+	if(this->background_)
+		this->background_->addListener(this);
+
+	this->clearWorkspace();
+}
+
+void Workspace::notifyTextureChanged(
+	Ogre::TextureGpu* texture,
+	Ogre::TextureGpuListener::Reason reason,
+	void* extraData)
+{
+	if(texture == this->output_ && reason == Ogre::TextureGpuListener::Reason::Deleted)
+		this->output(nullptr);
+	if(texture == this->background_ && reason == Ogre::TextureGpuListener::Reason::Deleted)
+		this->background(nullptr);
 }

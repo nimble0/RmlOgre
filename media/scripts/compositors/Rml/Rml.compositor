@@ -1,5 +1,24 @@
 compositor_node Rml/Start
 {
+	texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto
+	texture rt1 target_width target_height PFG_RGBA16_FLOAT msaa_auto
+	texture rtd target_width target_height PFG_D32_FLOAT_S8X24_UINT msaa_auto
+
+	target rt0
+	{
+		pass clear
+		{
+			colour_value 0 0 0 1
+		}
+	}
+
+	out 0 rt0
+	out 1 rt1
+	out 2 rtd
+}
+
+compositor_node Rml/StartWithBackground
+{
 	in 0 bg
 
 	texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto
