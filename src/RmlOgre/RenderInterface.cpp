@@ -320,12 +320,7 @@ Rml::TextureHandle RenderInterface::GenerateTexture(
 	texture->setResolution(source_dimensions.x, source_dimensions.y);
 	texture->setPixelFormat(Ogre::PixelFormatGpu::PFG_RGBA8_UNORM);
 
-	bool canUseSynchronousUpload =
-		texture->getNextResidencyStatus() == Ogre::GpuResidency::Resident
-		&& texture->isDataReady();
-	if(!canUseSynchronousUpload)
-		texture->waitForData();
-	texture->scheduleTransitionTo(Ogre::GpuResidency::Resident, image, false);
+	texture->scheduleTransitionTo(Ogre::GpuResidency::Resident, image);
 
 	auto* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
 		this->hlms->createDatablock(id, id, this->macroblock, this->blendblock, Ogre::HlmsParamVec()));
