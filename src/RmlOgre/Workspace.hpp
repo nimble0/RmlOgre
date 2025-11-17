@@ -99,6 +99,11 @@ public:
 		Ogre::SceneManager* sceneManager,
 		Ogre::TextureGpu* output,
 		Ogre::TextureGpu* background);
+	~Workspace();
+	Workspace(const Workspace&) = delete;
+	Workspace(Workspace&& b);
+	Workspace& operator=(const Workspace&) = delete;
+	Workspace& operator=(Workspace&& b);
 
 	void updateProjectionMatrix();
 	void clearAll();

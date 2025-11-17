@@ -142,6 +142,44 @@ Workspace::Workspace(
 	this->reserveRenderTextures(4);
 	this->buildWorkspace({});
 }
+Workspace::~Workspace()
+{
+	Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingleton().getCompositorManager2();
+	if(this->workspace)
+		compositorManager->removeWorkspace(this->workspace);
+	if(this->workspaceDef)
+		compositorManager->removeWorkspaceDefinition(this->workspaceDef->getName());
+
+	Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton()
+		.getRenderSystem()
+		->getTextureGpuManager();
+	for(auto* texture : this->renderTextures)
+		textureManager->destroyTexture(texture);
+}
+Workspace::Workspace(Workspace&& b)
+{
+	*this = std::move(b);
+}
+Workspace& Workspace::operator=(Workspace&& b)
+{
+	this->nodeTypes = b.nodeTypes;
+	this->projectionMatrix_ = b.projectionMatrix_;
+	this->sceneManager = b.sceneManager;
+	this->camera = b.camera;
+	std::swap(this->objectMemoryManager, b.objectMemoryManager);
+	std::swap(this->nodeMemoryManager, b.nodeMemoryManager);
+	std::swap(this->sceneNodes, b.sceneNodes);
+	std::swap(this->renderObjects, b.renderObjects);
+
+	this->output = b.output;
+	this->background = b.background;
+	std::swap(this->renderTextures, b.renderTextures);
+
+	std::swap(this->workspaceDef, b.workspaceDef);
+	std::swap(this->workspace, b.workspace);
+
+	return *this;
+}
 
 void Workspace::buildWorkspace(const std::array<std::size_t, NUM_NODE_TYPES>& reservedNodes)
 {
