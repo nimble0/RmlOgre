@@ -7,6 +7,8 @@
 
 #include <RmlUi/Core/RenderInterface.h>
 
+#include <Compositor/OgreCompositorChannel.h>
+
 
 namespace Ogre {
 
@@ -55,7 +57,7 @@ struct BaseRenderPass : BasePass
 {
 	RenderPassSettings settings;
 	std::vector<QueuedGeometry> queue;
-	std::vector<Ogre::TextureGpu*> textureDependencies;
+	Ogre::CompositorChannelVec textureDependencies;
 
 	int numRenderObjects() const override
 	{
