@@ -573,17 +573,9 @@ Rml::TextureHandle RenderInterface::SaveLayerAsTexture()
 	Ogre::TextureGpu* texture = renderTexture.first;
 	// This looks wrong but it works?
 	// Don't want to invalidate texture pointer so don't recreate texture
-	if(texture->getResidencyStatus() == Ogre::GpuResidency::Resident)
-	{
-		texture->_transitionTo(Ogre::GpuResidency::OnStorage, nullptr);
-		texture->_setNextResidencyStatus(Ogre::GpuResidency::OnStorage);
-	}
+	texture->scheduleTransitionTo(Ogre::GpuResidency::OnStorage);
 	texture->setResolution(dimensions.x, dimensions.y);
-	if(texture->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
-	{
-		texture->_transitionTo(Ogre::GpuResidency::Resident, nullptr);
-		texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-	}
+	texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
 
 	Ogre::String id = this->workspace.getNameStr();
 	id.append("_Texture_");
@@ -616,17 +608,9 @@ Rml::CompiledFilterHandle RenderInterface::SaveLayerAsMaskImage()
 	Ogre::TextureGpu* texture = renderTexture.first;
 	// This looks wrong but it works?
 	// Don't want to invalidate texture pointer so don't recreate texture
-	if(texture->getResidencyStatus() == Ogre::GpuResidency::Resident)
-	{
-		texture->_transitionTo(Ogre::GpuResidency::OnStorage, nullptr);
-		texture->_setNextResidencyStatus(Ogre::GpuResidency::OnStorage);
-	}
+	texture->scheduleTransitionTo(Ogre::GpuResidency::OnStorage);
 	texture->setResolution(dimensions.x, dimensions.y);
-	if(texture->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
-	{
-		texture->_transitionTo(Ogre::GpuResidency::Resident, nullptr);
-		texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-	}
+	texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
 
 	this->passes.push_back(RenderToTexturePass(
 		renderTexture.second,

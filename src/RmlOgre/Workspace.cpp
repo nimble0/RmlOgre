@@ -309,11 +309,7 @@ void Workspace::reserveRenderTextures(std::size_t capacity)
 		texture->setPixelFormat(Ogre::PixelFormatGpu::PFG_RGBA8_UNORM_SRGB);
 		texture->setResolution(1, 1);
 		texture->setNumMipmaps(8);
-		if(texture->getResidencyStatus() == Ogre::GpuResidency::OnStorage)
-		{
-			texture->_transitionTo(Ogre::GpuResidency::Resident, nullptr);
-			texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-		}
+		texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
 		this->renderTextures.add(texture);
 	}
 }
